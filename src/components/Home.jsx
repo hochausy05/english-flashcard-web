@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { BookOpen, Headphones, GraduationCap, XCircle, Trophy, BookCheck, ArrowRight, Sparkles, Compass } from "lucide-react";
 
-export function Home({ cards = [], onOpenFlashcard, onOpenVocabularyReview }) {
+export function Home({ cards = [], onOpenFlashcard, onOpenVocabularyReview, onOpenListeningPractice }) {
   // 1. Calculate dynamic statistics
   const stats = useMemo(() => {
     if (!cards || cards.length === 0) {
@@ -101,8 +101,8 @@ export function Home({ cards = [], onOpenFlashcard, onOpenVocabularyReview }) {
         </div>
         <div className="stat-card">
           <div className="stat-card-glow"></div>
-          <span className="stat-number">2 Chế độ</span>
-          <span className="stat-label">Quiz & Ôn tập</span>
+          <span className="stat-number">3 Chế độ</span>
+          <span className="stat-label">Quiz, Review & Nghe</span>
         </div>
       </section>
 
@@ -148,18 +148,21 @@ export function Home({ cards = [], onOpenFlashcard, onOpenVocabularyReview }) {
             </button>
           </div>
 
-          {/* Upcoming Features */}
-          <div className="feature-card disabled-card">
+          {/* Listening Practice */}
+          <div className="feature-card active-card">
             <div className="feature-card-content">
-              <div className="feature-icon-wrapper coming-icon">
-                <Headphones size={20} />
+              <div className="feature-icon-wrapper listening-icon">
+                <Headphones size={24} style={{ color: "#7f56d9" }} />
               </div>
-              <span className="badge coming-soon">Sắp ra mắt</span>
+              <span className="badge active">Luyện nghe</span>
               <h3>Listening Practice</h3>
               <p className="feature-desc">
-                Luyện nghe từ vựng và câu ví dụ với nhiều tốc độ phát âm khác nhau.
+                Nghe từ vựng và nhập lại từ tiếng Anh tương ứng. So sánh đáp án chuẩn xác.
               </p>
             </div>
+            <button className="feature-button primary" onClick={() => onOpenListeningPractice()}>
+              Luyện nghe
+            </button>
           </div>
 
           <div className="feature-card disabled-card">

@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Home } from "./components/Home.jsx";
 import { FlashcardQuiz } from "./components/FlashcardQuiz.jsx";
 import { VocabularyReview } from "./components/VocabularyReview.jsx";
+import { ListeningPractice } from "./components/ListeningPractice.jsx";
 import { loadFlashcards } from "./utils/loadFlashcards.js";
 
 export default function App() {
@@ -47,6 +48,10 @@ export default function App() {
             if (course) setInitialCourse(course);
             setCurrentPage("vocabularyReview");
           }}
+          onOpenListeningPractice={(course) => {
+            if (course) setInitialCourse(course);
+            setCurrentPage("listeningPractice");
+          }}
         />
       )}
       {currentPage === "flashcard" && (
@@ -54,6 +59,9 @@ export default function App() {
       )}
       {currentPage === "vocabularyReview" && (
         <VocabularyReview cards={cards} onBackHome={() => setCurrentPage("home")} initialCourse={initialCourse} />
+      )}
+      {currentPage === "listeningPractice" && (
+        <ListeningPractice cards={cards} onBackHome={() => setCurrentPage("home")} initialCourse={initialCourse} />
       )}
     </main>
   );

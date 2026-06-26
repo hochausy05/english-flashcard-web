@@ -1,6 +1,9 @@
+const WORD_AUDIO_VOLUME = 1.0;
+
 export function speakWord(word, audioUrl = "") {
   if (audioUrl) {
     const audio = new Audio(audioUrl);
+    audio.volume = WORD_AUDIO_VOLUME;
     audio.play();
     return;
   }
@@ -16,7 +19,8 @@ export function speakWord(word, audioUrl = "") {
   utterance.lang = "en-US";
   utterance.rate = 0.85;
   utterance.pitch = 1;
-  utterance.volume = 1;
+  utterance.volume = WORD_AUDIO_VOLUME;
 
   window.speechSynthesis.speak(utterance);
 }
+

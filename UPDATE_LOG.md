@@ -19,6 +19,93 @@ Mỗi lần Antigravity/AI sửa xong code, phải thêm một mục mới ở t
 - ...
 ```
 
+## 2026-06-27 - Thêm chế độ Luyện nghe (Listening Practice)
+
+### Đã làm
+* Phát triển màn hình chọn buổi học (Course & Session Selector) hỗ trợ chọn khóa học Nền tảng hoặc TOEIC 1 và chọn 1 hoặc nhiều buổi học.
+* Hỗ trợ hai chế độ luyện nghe giống Flashcard Quiz: **Trắc nghiệm** (chọn từ tiếng Anh đúng trong 4 phương án) và **Nhập từ tiếng Anh** (gõ lại từ đã nghe).
+* Tích hợp thuật toán `createListeningQuestion` để tự động lấy và trộn ngẫu nhiên 3 đáp án sai (các từ tiếng Anh khác trong bộ học/từ CSV) làm lựa chọn trắc nghiệm.
+* Phát triển màn hình chơi luyện nghe (Gameplay Screen) với các tính năng:
+  - Nút "Nghe từ" lớn trung tâm và nút "Nghe lại" nhỏ hơn phát âm chuẩn từ tiếng Anh qua file audio (nếu có) hoặc Web Speech API.
+  - Ô nhập từ tiếng Anh full-width, tối ưu responsive trên mobile (font-size 16px, chiều cao tối thiểu 52px).
+  - Tự động xóa input cũ, reset trạng thái, và focus vào ô nhập mỗi khi chuyển câu bằng `useRef` và `useEffect`.
+  - Hỗ trợ phím `Enter` thông minh: nhấn Enter lần 1 để kiểm tra đáp án, nhấn lần 2 để chuyển câu tiếp theo.
+  - So sánh đáp án không phân biệt chữ hoa thường, tự động chuẩn hóa dấu nháy đơn, khoảng trắng đầu cuối và khoảng trắng giữa cụm từ thông qua hàm `normalizeListeningAnswer`.
+  - Phát âm thanh phản hồi đúng/sai bằng Audio API và hiển thị chi tiết (đáp án đúng, loại từ, phiên âm, nghĩa tiếng Việt, câu ví dụ tiếng Anh) ngay sau khi kiểm tra.
+* Cập nhật màn hình kết quả luyện nghe (Finished/Result Screen):
+  - Tính điểm hệ 10 làm tròn 1 chữ số thập phân.
+  - Hiển thị bảng tổng kết toàn bộ câu hỏi đã làm (đáp án đúng, loại từ, nghĩa, bạn đã nhập, trạng thái đúng/sai, nút nghe lại).
+  - Tối ưu hiển thị responsive dạng danh sách thẻ (card-list) kết quả trên mobile.
+* Tích hợp điều hướng vào `App.jsx` và kích hoạt thẻ Listening Practice trên trang chủ `Home.jsx`.
+* Thêm style CSS premium cho toàn bộ chế độ Luyện nghe trong `styles.css`.
+
+### File đã sửa
+* `src/App.jsx`
+* `src/components/Home.jsx`
+* `src/components/ListeningPractice.jsx` [NEW]
+* `src/styles.css`
+
+### Ghi chú
+* Bản build production thành công bằng `npm run build`.
+* Giữ nguyên các chức năng cũ (Flashcard Quiz, Vocabulary Review).
+
+## 2026-06-27 - Thêm chế độ học Nhập từ tiếng Anh trong Flashcard Quiz
+
+### Đã làm
+* Thêm chế độ học mới `"typing"` (Nhập từ tiếng Anh) bên cạnh chế độ trắc nghiệm `"multipleChoice"` (mặc định) trong component `FlashcardQuiz`.
+* Xây dựng giao diện chọn chế độ học (Mode Selector) trên màn hình chọn buổi học với hiệu ứng hover và active gradient hiện đại.
+* Thiết lập logic học chế độ gõ:
+  - Hiển thị nghĩa tiếng Việt (`answer`), loại từ (`pos`), và câu ví dụ đã được ẩn từ tiếng Anh cần gõ bằng hàm helper `maskWordInExample` để chống lộ đáp án.
+  - Tích hợp ô nhập từ tiếng Anh full-width, tối ưu responsive trên mobile (font-size 16px, chiều cao tối thiểu 52px).
+  - Tự động xóa input cũ, reset trạng thái, và focus vào ô nhập mỗi khi chuyển câu bằng `useRef` và `useEffect`.
+  - Hỗ trợ phím `Enter` thông minh: nhấn Enter lần 1 để kiểm tra đáp án, nhấn lần 2 để chuyển câu tiếp theo.
+  - Phát âm thanh phản hồi đúng/sai bằng Audio API và giữ nút phát âm từ vựng (chỉ mở ra sau khi đã bấm kiểm tra để chống lộ đáp án).
+  - So sánh đáp án không phân biệt hoa thường, tự động chuẩn hóa dấu nháy đơn thông minh (`’` hoặc `‘` thành `'`), khoảng trắng dư thừa qua hàm `normalizeTypingAnswer`.
+* Cập nhật màn hình kết quả bài học (`finished` state):
+  - Hiển thị bảng kết quả so sánh thông tin từ vựng chi tiết ("Bạn nhập: X | Đáp án đúng: Y") cho cả chế độ gõ và trắc nghiệm.
+  - Hỗ trợ tối ưu responsive dạng card review kết quả trên mobile cho chế độ gõ.
+* Thêm style CSS premium cho toàn bộ chế độ học mới trong `styles.css`.
+
+### File đã sửa
+* `src/components/FlashcardQuiz.jsx`
+* `src/styles.css`
+
+### Ghi chú
+* Bản build production thành công bằng `npm run build`.
+* Không ảnh hưởng đến các chức năng cũ (Multiple Choice, Vocabulary Review, Audio feedback).
+
+## 2026-06-27 - Tăng âm lượng âm thanh feedback và phát âm từ vựng
+
+### Đã làm
+* Tăng âm lượng âm thanh phản hồi đúng/sai trong `feedbackSound.js` bằng cách chuyển cấu hình âm lượng thành các hằng số dễ điều chỉnh ở đầu file: `CORRECT_SOUND_VOLUME = 0.38` (tăng khoảng 2.5 lần so với mức 0.15 cũ) và `WRONG_SOUND_VOLUME = 0.35` (tăng khoảng 1.75 lần so với mức 0.20 cũ).
+* Tăng âm lượng phát âm từ vựng trong `speech.js` bằng cách thiết lập hằng số `WORD_AUDIO_VOLUME = 1.0` ở đầu file và gán âm lượng này cho cả Web Speech API (`utterance.volume = WORD_AUDIO_VOLUME`) và thẻ audio (`audio.volume = WORD_AUDIO_VOLUME`).
+* Đảm bảo tính năng phát âm đồng bộ và to rõ hơn ở cả màn hình Flashcard Quiz và Vocabulary Review mà không làm thay đổi các logic học tập khác.
+
+### File đã sửa
+* `src/utils/feedbackSound.js`
+* `src/utils/speech.js`
+
+### Ghi chú
+* Đã chạy build thành công bằng `npm run build`.
+
+## 2026-06-27 - Thêm âm thanh phản hồi đúng/sai khi chọn đáp án trong Flashcard Quiz
+
+### Đã làm
+* Tạo file tiện ích âm thanh `feedbackSound.js` để phát âm thanh đúng (2 nốt cao, ngắn, sinh động) và sai (1 nốt thấp, ngắn, dạng sóng tam giác êm dịu) sử dụng Web Audio API tích hợp sẵn của trình duyệt.
+* Tích hợp âm thanh phản hồi vào sự kiện chọn đáp án trắc nghiệm (`handleSelect`) của component `FlashcardQuiz`, bảo đảm âm thanh phát đúng 1 lần cho mỗi câu và không tự lặp lại khi người dùng click liên tục.
+* Thêm nút bật/tắt âm thanh phản hồi dạng chip ở phần navigation (`back-nav`) của màn quiz với trạng thái lưu trữ lâu dài trong `localStorage` bằng key `flashcard_feedback_sound_enabled`. Mặc định trạng thái là bật.
+* Đồng bộ thiết kế nút bật/tắt âm thanh phản hồi theo phong cách hiện đại (glassmorphism/border-radius), hỗ trợ thu nhỏ chỉ hiển thị icon trên các thiết bị di động (chiều rộng màn hình < 480px) nhằm tránh tràn dòng và vỡ layout.
+* Bảo đảm tính năng phát âm của từ vựng (pronunciation) qua Web Speech API và file audio gốc hoạt động bình thường, độc lập với việc bật/tắt âm thanh phản hồi đúng/sai.
+
+### File đã sửa
+* `src/utils/feedbackSound.js` (NEW)
+* `src/components/FlashcardQuiz.jsx`
+* `src/styles.css`
+
+### Ghi chú
+* Đã chạy build thành công với Vite (`npm run build`).
+* Không làm thay đổi logic học, logic tính điểm hệ 10 hay cấu trúc dữ liệu của bộ flashcard.
+
 ## 2026-06-27 - Thiết kế và Nâng cấp Giao diện Trang chủ (Homepage UI Redesign)
 
 ### Đã làm

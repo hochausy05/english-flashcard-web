@@ -1,7 +1,8 @@
-import { useMemo, useState } from "react";
-import { Volume2, CheckCircle2, XCircle, ArrowLeft, Play, Calendar, Award, RefreshCw, Layers } from "lucide-react";
+import { useMemo, useState, useRef, useEffect } from "react";
+import { Volume2, VolumeX, CheckCircle2, XCircle, ArrowLeft, Play, Calendar, Award, RefreshCw, Layers } from "lucide-react";
 import { createQuestion } from "../utils/createQuestion.js";
 import { speakWord } from "../utils/speech.js";
+import { playFeedbackSound } from "../utils/feedbackSound.js";
 
 // Hàm helper để xáo trộn mảng dùng Fisher-Yates
 function shuffle(items) {
@@ -13,6 +14,28 @@ function shuffle(items) {
   return arr;
 }
 
+// Hàm normalize đáp án nhập tiếng Anh
+function normalizeTypingAnswer(value) {
+  return String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[’‘]/g, "'")
+    .replace(/\s+/g, " ");
+}
+
+// Hàm ẩn từ cần đoán trong câu ví dụ
+function maskWordInExample(example, word) {
+  if (!example || !word) return example || "";
+  const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+  const regex = new RegExp(`\\b${escapedWord}\\b`, "gi");
+  let masked = example.replace(regex, "___");
+  if (masked === example) {
+    const fallbackRegex = new RegExp(escapedWord, "gi");
+    masked = example.replace(fallbackRegex, "___");
+  }
+  return masked;
+}
+
 export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
   const [quizStatus, setQuizStatus] = useState("selecting"); // "selecting" | "playing" | "finished"
   const [selectedCourse, setSelectedCourse] = useState(initialCourse || "foundation");
@@ -22,6 +45,35 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
   const [answersLog, setAnswersLog] = useState([]);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
   const [isDaysExpanded, setIsDaysExpanded] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem("flashcard_feedback_sound_enabled");
+    return saved !== null ? saved === "true" : true;
+  });
+
+  const [quizMode, setQuizMode] = useState("multipleChoice"); // "multipleChoice" | "typing"
+  const [typedAnswer, setTypedAnswer] = useState("");
+  const [isAnsweredState, setIsAnsweredState] = useState(false);
+  const inputRef = useRef(null);
+
+  const toggleSound = () => {
+    setSoundEnabled((prev) => {
+      const next = !prev;
+      localStorage.setItem("flashcard_feedback_sound_enabled", String(next));
+      return next;
+    });
+  };
+
+  // Tự động focus vào ô input khi chuyển sang câu mới ở chế độ gõ
+  useEffect(() => {
+    if (quizStatus === "playing" && quizMode === "typing" && inputRef.current) {
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.focus();
+        }
+      }, 50);
+    }
+  }, [currentIndex, quizStatus, quizMode]);
+
 
   // Gom nhóm các từ vựng theo buổi học (day) thuộc course đang chọn để hiển thị ở màn chọn buổi
   const daysInfo = useMemo(() => {
@@ -44,7 +96,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
       }));
   }, [cards, selectedCourse]);
 
-  const isAnswered = selectedAnswer !== null;
+  const isAnswered = quizMode === "multipleChoice" ? selectedAnswer !== null : isAnsweredState;
 
   // Lấy câu hỏi hiện tại từ questionQueue
   const currentQuestion = useMemo(() => {
@@ -124,15 +176,21 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
     setCurrentIndex(0);
     setAnswersLog([]);
     setSelectedAnswer(null);
+    setTypedAnswer("");
+    setIsAnsweredState(false);
     setQuizStatus("playing");
   }
 
-  // Chọn một đáp án
+  // Chọn một đáp án (Chế độ trắc nghiệm)
   function handleSelect(option) {
     if (isAnswered) return;
 
     setSelectedAnswer(option);
     const isCorrect = option === currentQuestion.answer;
+
+    if (soundEnabled) {
+      playFeedbackSound(isCorrect);
+    }
 
     // Lưu vào answersLog
     setAnswersLog((prev) => [
@@ -146,6 +204,40 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
         pos: currentQuestion.pos,
         example: currentQuestion.example,
         audio: currentQuestion.audio,
+        mode: "multipleChoice",
+      },
+    ]);
+  }
+
+  // Kiểm tra đáp án nhập (Chế độ gõ)
+  function handleCheckAnswer() {
+    if (isAnswered) return;
+
+    const trimmed = typedAnswer.trim();
+    const normalizedUser = normalizeTypingAnswer(trimmed);
+    const normalizedCorrect = normalizeTypingAnswer(currentQuestion.word);
+    const isCorrect = normalizedUser === normalizedCorrect;
+
+    if (soundEnabled) {
+      playFeedbackSound(isCorrect);
+    }
+
+    setIsAnsweredState(true);
+
+    // Lưu vào answersLog
+    setAnswersLog((prev) => [
+      ...prev,
+      {
+        word: currentQuestion.word,
+        pos: currentQuestion.pos,
+        answer: currentQuestion.answer,
+        ipa: currentQuestion.ipa,
+        example: currentQuestion.example,
+        typedAnswer: trimmed,
+        correctAnswer: currentQuestion.word,
+        isCorrect: isCorrect,
+        audio: currentQuestion.audio,
+        mode: "typing",
       },
     ]);
   }
@@ -156,6 +248,8 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
       setQuizStatus("finished");
     } else {
       setSelectedAnswer(null);
+      setTypedAnswer("");
+      setIsAnsweredState(false);
       setCurrentIndex((prev) => prev + 1);
     }
   }
@@ -292,6 +386,33 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
             </div>
           </div>
 
+          <div className="quiz-mode-selector-wrapper">
+            <h3 className="selector-section-title">Chọn kiểu kiểm tra</h3>
+            <div className="quiz-mode-options">
+              <button
+                type="button"
+                className={`quiz-mode-btn ${quizMode === "multipleChoice" ? "active" : ""}`}
+                onClick={() => setQuizMode("multipleChoice")}
+              >
+                <div className="quiz-mode-info">
+                  <span className="quiz-mode-title">Trắc nghiệm</span>
+                  <span className="quiz-mode-desc">Chọn đáp án đúng trong 4 lựa chọn</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`quiz-mode-btn ${quizMode === "typing" ? "active" : ""}`}
+                onClick={() => setQuizMode("typing")}
+              >
+                <div className="quiz-mode-info">
+                  <span className="quiz-mode-title">Nhập từ tiếng Anh</span>
+                  <span className="quiz-mode-desc">Nhìn nghĩa tiếng Việt và nhập từ tiếng Anh</span>
+                </div>
+              </button>
+            </div>
+          </div>
+
           <div className="action-box">
             <button
               className="primary-button start-button"
@@ -344,13 +465,19 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
       );
     }
 
-    const isCorrect = selectedAnswer === currentQuestion.answer;
+    const isCorrect = quizMode === "multipleChoice"
+      ? selectedAnswer === currentQuestion.answer
+      : normalizeTypingAnswer(typedAnswer) === normalizeTypingAnswer(currentQuestion.word);
 
     return (
       <div className="quiz-flow-container">
         <div className="back-nav">
           <button className="ghost-button" onClick={handleBack}>
             <ArrowLeft size={16} /> Dừng học
+          </button>
+          <button type="button" className="sound-toggle-btn" onClick={toggleSound} title="Bật/Tắt âm thanh phản hồi">
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+            <span>{soundEnabled ? "Âm thanh: Bật" : "Âm thanh: Tắt"}</span>
           </button>
         </div>
 
@@ -372,59 +499,157 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
             </div>
           </div>
 
-          <div className="word-box">
-            <button
-              className="speaker"
-              onClick={() => speakWord(currentQuestion.word, currentQuestion.audio)}
-            >
-              <Volume2 size={26} />
-            </button>
-            <div>
-              <h2>{currentQuestion.word}</h2>
-              <p className="ipa">
-                {currentQuestion.pos ? (
-                  currentQuestion.ipa ? `${currentQuestion.pos} · ${currentQuestion.ipa}` : currentQuestion.pos
-                ) : (
-                  currentQuestion.ipa || "Chưa có phiên âm"
-                )}
-              </p>
-            </div>
-          </div>
-
-          <p className="example">“{currentQuestion.example || "Chưa có câu ví dụ."}”</p>
-
-          <div className="options">
-            {currentQuestion.options.map((option) => {
-              const isThisCorrect = option === currentQuestion.answer;
-              const isThisSelected = option === selectedAnswer;
-
-              let className = "option";
-              if (isAnswered && isThisCorrect) className += " correct";
-              if (isAnswered && isThisSelected && !isThisCorrect) className += " wrong";
-
-              return (
+          {quizMode === "multipleChoice" ? (
+            <>
+              <div className="word-box">
                 <button
-                  key={option}
-                  className={className}
-                  onClick={() => handleSelect(option)}
-                  disabled={isAnswered}
+                  className="speaker"
+                  onClick={() => speakWord(currentQuestion.word, currentQuestion.audio)}
                 >
-                  <span>{option}</span>
-                  {isAnswered && isThisCorrect && <CheckCircle2 size={20} />}
-                  {isAnswered && isThisSelected && !isThisCorrect && <XCircle size={20} />}
+                  <Volume2 size={26} />
                 </button>
-              );
-            })}
-          </div>
+                <div>
+                  <h2>{currentQuestion.word}</h2>
+                  <p className="ipa">
+                    {currentQuestion.pos ? (
+                      currentQuestion.ipa ? `${currentQuestion.pos} · ${currentQuestion.ipa}` : currentQuestion.pos
+                    ) : (
+                      currentQuestion.ipa || "Chưa có phiên âm"
+                    )}
+                  </p>
+                </div>
+              </div>
 
-          {isAnswered && (
-            <div className="result-box">
-              <p className={isCorrect ? "result correct-text" : "result wrong-text"}>
-                {isCorrect ? "Chính xác." : `Sai rồi. Đáp án đúng là: ${currentQuestion.answer}`}
-              </p>
-              <button className="primary-button" onClick={handleNext}>
-                {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
-              </button>
+              <p className="example">“{currentQuestion.example || "Chưa có câu ví dụ."}”</p>
+
+              <div className="options">
+                {currentQuestion.options.map((option) => {
+                  const isThisCorrect = option === currentQuestion.answer;
+                  const isThisSelected = option === selectedAnswer;
+
+                  let className = "option";
+                  if (isAnswered && isThisCorrect) className += " correct";
+                  if (isAnswered && isThisSelected && !isThisCorrect) className += " wrong";
+
+                  return (
+                    <button
+                      key={option}
+                      className={className}
+                      onClick={() => handleSelect(option)}
+                      disabled={isAnswered}
+                    >
+                      <span>{option}</span>
+                      {isAnswered && isThisCorrect && <CheckCircle2 size={20} />}
+                      {isAnswered && isThisSelected && !isThisCorrect && <XCircle size={20} />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {isAnswered && (
+                <div className="result-box">
+                  <p className={isCorrect ? "result correct-text" : "result wrong-text"}>
+                    {isCorrect ? "Chính xác." : `Sai rồi. Đáp án đúng là: ${currentQuestion.answer}`}
+                  </p>
+                  <button className="primary-button" onClick={handleNext}>
+                    {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            // Chế độ gõ nhập tiếng Anh
+            <div className="typing-quiz-container">
+              <div className="typing-word-box">
+                <span className="label">Nghĩa tiếng Việt</span>
+                <h2>{currentQuestion.answer}</h2>
+                <p className="typing-pos">
+                  Loại từ: <strong>{currentQuestion.pos || "chưa phân loại"}</strong>
+                </p>
+              </div>
+
+              {currentQuestion.example && (
+                <p className="example">
+                  Ví dụ: “{maskWordInExample(currentQuestion.example, currentQuestion.word)}”
+                </p>
+              )}
+
+              <div className="typing-input-wrapper">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className="typing-input"
+                  placeholder="Nhập từ tiếng Anh tương ứng..."
+                  value={typedAnswer}
+                  onChange={(e) => setTypedAnswer(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (!isAnswered) {
+                        handleCheckAnswer();
+                      } else {
+                        handleNext();
+                      }
+                    }
+                  }}
+                  disabled={isAnswered}
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck="false"
+                />
+                
+                {!isAnswered && (
+                  <button
+                    className="primary-button check-btn"
+                    onClick={handleCheckAnswer}
+                    disabled={!typedAnswer.trim()}
+                  >
+                    Kiểm tra
+                  </button>
+                )}
+              </div>
+
+              {isAnswered && (
+                <div className="typing-result-feedback card">
+                  <div className="feedback-status-header">
+                    {isCorrect ? (
+                      <span className="status-label correct"><CheckCircle2 size={20} /> Chính xác!</span>
+                    ) : (
+                      <span className="status-label wrong"><XCircle size={20} /> Chưa đúng rồi!</span>
+                    )}
+                  </div>
+
+                  <div className="correct-word-details">
+                    <span className="label">Từ tiếng Anh đúng:</span>
+                    <div className="correct-word-row">
+                      <span className="word-text">{currentQuestion.word}</span>
+                      {currentQuestion.ipa && <span className="word-ipa">/{currentQuestion.ipa.replace(/\//g, "")}/</span>}
+                      
+                      <button
+                        className="speaker-mini-btn font-sound-btn"
+                        onClick={() => speakWord(currentQuestion.word, currentQuestion.audio)}
+                        title="Nghe phát âm"
+                      >
+                        <Volume2 size={18} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {!isCorrect && (
+                    <div className="user-typed-details">
+                      <span className="label">Bạn đã nhập:</span>
+                      <span className="user-typed-text">{typedAnswer || "(Trống)"}</span>
+                    </div>
+                  )}
+
+                  <div className="feedback-actions">
+                    <button className="primary-button next-btn" onClick={handleNext}>
+                      {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </section>
@@ -477,8 +702,8 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
                     <tr>
                       <th>Từ vựng</th>
                       <th>Loại từ</th>
-                      <th>Nghĩa chuẩn</th>
-                      <th>Lựa chọn của bạn</th>
+                      <th>{quizMode === "typing" ? "Nghĩa tiếng Việt" : "Nghĩa chuẩn"}</th>
+                      <th>{quizMode === "typing" ? "Kết quả nhập" : "Lựa chọn của bạn"}</th>
                       <th>Nghe</th>
                     </tr>
                   </thead>
@@ -492,8 +717,19 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
                           </div>
                         </td>
                         <td className="review-pos">{item.pos || ""}</td>
-                        <td className="review-correct">{item.correctAnswer}</td>
-                        <td className="review-wrong">{item.selectedAnswer || "(Bỏ qua)"}</td>
+                        <td className="review-correct">
+                          {item.mode === "typing" ? item.answer : item.correctAnswer}
+                        </td>
+                        <td>
+                          {item.mode === "typing" ? (
+                            <div className="review-typing-compare">
+                              <span className="review-wrong" style={{ display: 'block' }}>Bạn nhập: <code className="typed-code">{item.typedAnswer || "(Trống)"}</code></span>
+                              <span className="review-correct-label" style={{ display: 'block', color: '#027a48', fontWeight: '600', marginTop: '4px' }}>Đáp án đúng: <strong>{item.word}</strong></span>
+                            </div>
+                          ) : (
+                            <span className="review-wrong">{item.selectedAnswer || "(Bỏ qua)"}</span>
+                          )}
+                        </td>
                         <td>
                           <button
                             className="speaker-mini-btn"
@@ -528,12 +764,27 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
                     
                     <div className="review-card-body">
                       <div className="review-card-detail">
-                        <span className="detail-label">Nghĩa đúng:</span>
-                        <span className="detail-val review-correct">{item.correctAnswer}</span>
+                        <span className="detail-label">{item.mode === "typing" ? "Nghĩa tiếng Việt:" : "Nghĩa đúng:"}</span>
+                        <span className="detail-val review-correct">{item.mode === "typing" ? item.answer : item.correctAnswer}</span>
                       </div>
                       <div className="review-card-detail">
-                        <span className="detail-label">Bạn chọn:</span>
-                        <span className="detail-val review-wrong">{item.selectedAnswer || "(Bỏ qua)"}</span>
+                        {item.mode === "typing" ? (
+                          <div className="review-typing-compare-mobile" style={{ width: '100%' }}>
+                            <div style={{ marginBottom: '4px' }}>
+                              <span className="detail-label">Bạn nhập:</span>
+                              <span className="detail-val review-wrong" style={{ marginLeft: '4px' }}>{item.typedAnswer || "(Trống)"}</span>
+                            </div>
+                            <div>
+                              <span className="detail-label" style={{ color: '#027a48' }}>Đáp án đúng:</span>
+                              <span className="detail-val" style={{ marginLeft: '4px', color: '#027a48', fontWeight: 'bold' }}>{item.word}</span>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="detail-label">Bạn chọn:</span>
+                            <span className="detail-val review-wrong">{item.selectedAnswer || "(Bỏ qua)"}</span>
+                          </>
+                        )}
                       </div>
                     </div>
                   </div>
