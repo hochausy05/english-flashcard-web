@@ -2,6 +2,9 @@ import { useMemo, useState, useRef, useEffect } from "react";
 import { Volume2, VolumeX, CheckCircle2, XCircle, ArrowLeft, Play, Calendar, Award, RefreshCw, Layers } from "lucide-react";
 import { speakWord } from "../utils/speech.js";
 import { playFeedbackSound } from "../utils/feedbackSound.js";
+import { useAuth } from "../context/AuthContext.jsx";
+import { saveStudyResultToSupabase } from "../utils/studyResultService.js";
+
 
 // Helper to shuffle array using Fisher-Yates algorithm
 function shuffle(items) {
@@ -67,12 +70,17 @@ function createListeningQuestion(correctCard, sessionCards, allCards) {
 }
 
 export function ListeningPractice({ cards, onBackHome, initialCourse }) {
+  const { user } = useAuth();
   const [quizStatus, setQuizStatus] = useState("selecting"); // "selecting" | "playing" | "finished"
   const [selectedCourse, setSelectedCourse] = useState(initialCourse || "foundation");
   const [selectedDays, setSelectedDays] = useState([]);
   const [questionQueue, setQuestionQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answersLog, setAnswersLog] = useState([]);
+  const [saveStatus, setSaveStatus] = useState("idle"); // "idle" | "saving" | "success" | "error" | "not_logged_in"
+  const [saveErrorMsg, setSaveErrorMsg] = useState("");
+  const hasSavedRef = useRef(false);
+
   
   const [quizMode, setQuizMode] = useState("multipleChoice"); // "multipleChoice" | "typing"
   const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -162,6 +170,49 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
     }
   }, [currentIndex, quizStatus, currentQuestion]);
 
+  // Tự động lưu tiến độ luyện nghe lên Supabase khi hoàn thành bài học
+  useEffect(() => {
+    if (quizStatus === "finished") {
+      if (hasSavedRef.current) return;
+      hasSavedRef.current = true;
+
+      if (!user) {
+        setSaveStatus("not_logged_in");
+        return;
+      }
+
+      async function saveResult() {
+        setSaveStatus("saving");
+        const res = await saveStudyResultToSupabase({
+          user,
+          courseCode: selectedCourse,
+          selectedDays,
+          mode: "listening",
+          totalQuestions: questionQueue.length,
+          correctCount: correctCount,
+          wrongCount: questionQueue.length - correctCount,
+          score: score10,
+          answersLog
+        });
+
+        if (res.success) {
+          setSaveStatus("success");
+          setSaveErrorMsg("");
+        } else {
+          setSaveStatus("error");
+          setSaveErrorMsg(res.error?.message || "Lỗi không xác định");
+        }
+      }
+
+      saveResult();
+    } else {
+      hasSavedRef.current = false;
+      setSaveStatus("idle");
+      setSaveErrorMsg("");
+    }
+  }, [quizStatus, user, selectedCourse, selectedDays, questionQueue.length, correctCount, score10, answersLog]);
+
+
   // Handle course changing
   function handleSelectCourse(course) {
     if (course !== selectedCourse) {
@@ -233,6 +284,7 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
     setAnswersLog((prev) => [
       ...prev,
       {
+        id: currentQuestion.id,
         word: currentQuestion.word,
         pos: currentQuestion.pos,
         answer: currentQuestion.answer,
@@ -267,6 +319,7 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
     setAnswersLog((prev) => [
       ...prev,
       {
+        id: currentQuestion.id,
         word: currentQuestion.word,
         pos: currentQuestion.pos,
         answer: currentQuestion.answer,
@@ -763,6 +816,13 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
               <span className="score-total">/ 10 điểm</span>
             </div>
             <p className="score-comment">{getScoreMessage(score10)}</p>
+            {/* Trạng thái lưu kết quả Supabase */}
+            <div className={`save-status-msg ${saveStatus}`}>
+              {saveStatus === "not_logged_in" && "Đăng nhập để lưu tiến độ học."}
+              {saveStatus === "saving" && "Đang lưu kết quả..."}
+              {saveStatus === "success" && "Đã lưu kết quả học."}
+              {saveStatus === "error" && `Không lưu được kết quả: ${saveErrorMsg}`}
+            </div>
           </div>
 
           <div className="stats-grid">

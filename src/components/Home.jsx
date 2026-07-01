@@ -1,7 +1,22 @@
-import { useMemo } from "react";
-import { BookOpen, Headphones, GraduationCap, XCircle, Trophy, BookCheck, ArrowRight, Sparkles, Compass } from "lucide-react";
+import { useMemo, useState } from "react";
+import { BookOpen, Headphones, GraduationCap, XCircle, Trophy, BookCheck, ArrowRight, Sparkles, Compass, User, LogOut, LogIn, BarChart3, Settings, Menu, X } from "lucide-react";
+import { useAuth } from "../context/AuthContext.jsx";
 
-export function Home({ cards = [], onOpenFlashcard, onOpenVocabularyReview, onOpenListeningPractice }) {
+
+export function Home(props) {
+  const { user, profile, isAdmin, signOut } = useAuth();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const {
+    cards = [],
+    onOpenFlashcard,
+    onOpenVocabularyReview,
+    onOpenListeningPractice,
+    onOpenAuth,
+    onOpenProgress,
+    onOpenWrongWords,
+    onOpenAdmin
+  } = props;
+
   // 1. Calculate dynamic statistics
   const stats = useMemo(() => {
     if (!cards || cards.length === 0) {
@@ -32,6 +47,98 @@ export function Home({ cards = [], onOpenFlashcard, onOpenVocabularyReview, onOp
 
   return (
     <div className="home-container">
+      {/* Auth Status Header */}
+      <header className="home-auth-header">
+        <div className="header-top-row">
+          <div className="auth-status-info">
+            {user ? (
+              <div className="auth-user-info-badge">
+                <User size={16} className="auth-user-icon" />
+                <span className="auth-user-email">Xin chào, <strong>{profile?.display_name || user.email}</strong></span>
+              </div>
+            ) : (
+              <span className="auth-user-guest">Bạn chưa đăng nhập</span>
+            )}
+          </div>
+
+          {/* Desktop actions - shown inline on desktop */}
+          <div className="auth-status-actions desktop-nav">
+            {user && isAdmin === true && (
+              <button
+                type="button"
+                className="auth-action-btn admin-btn"
+                onClick={() => {
+                  if (typeof props.onOpenAdmin === "function") {
+                    props.onOpenAdmin();
+                  } else if (typeof props.onNavigate === "function") {
+                    props.onNavigate("admin");
+                  }
+                }}
+              >
+                <Settings size={16} /> Quản trị
+              </button>
+            )}
+            {user && (
+              <button className="home-progress-btn" onClick={onOpenProgress} id="home-progress-btn">
+                <BarChart3 size={16} /> Tiến trình
+              </button>
+            )}
+            {user ? (
+              <button className="auth-btn logout" onClick={signOut}>
+                <LogOut size={14} /> Đăng xuất
+              </button>
+            ) : (
+              <button className="auth-btn login" onClick={onOpenAuth}>
+                <LogIn size={14} /> Đăng nhập
+              </button>
+            )}
+          </div>
+
+          {/* Mobile hamburger toggle */}
+          <button
+            className="mobile-menu-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Menu"
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
+        </div>
+
+        {/* Mobile dropdown nav */}
+        {mobileMenuOpen && (
+          <nav className="mobile-nav-dropdown">
+            {user && isAdmin === true && (
+              <button
+                type="button"
+                className="mobile-nav-item"
+                onClick={() => {
+                  setMobileMenuOpen(false);
+                  if (typeof props.onOpenAdmin === "function") props.onOpenAdmin();
+                  else if (typeof props.onNavigate === "function") props.onNavigate("admin");
+                }}
+              >
+                <Settings size={18} /> Quản trị
+              </button>
+            )}
+            {user && (
+              <button className="mobile-nav-item" onClick={() => { setMobileMenuOpen(false); onOpenProgress(); }}>
+                <BarChart3 size={18} /> Tiến trình học tập
+              </button>
+            )}
+            {user ? (
+              <button className="mobile-nav-item mobile-nav-danger" onClick={() => { setMobileMenuOpen(false); signOut(); }}>
+                <LogOut size={18} /> Đăng xuất
+              </button>
+            ) : (
+              <button className="mobile-nav-item mobile-nav-primary" onClick={() => { setMobileMenuOpen(false); onOpenAuth(); }}>
+                <LogIn size={18} /> Đăng nhập
+              </button>
+            )}
+          </nav>
+        )}
+      </header>
+
+
       {/* 1. Hero Section */}
       <section className="hero-section">
         <div className="hero-content">
@@ -178,17 +285,20 @@ export function Home({ cards = [], onOpenFlashcard, onOpenVocabularyReview, onOp
             </div>
           </div>
 
-          <div className="feature-card disabled-card">
+          <div className="feature-card active-card">
             <div className="feature-card-content">
-              <div className="feature-icon-wrapper coming-icon">
-                <XCircle size={20} />
+              <div className="feature-icon-wrapper wrong-words-icon">
+                <XCircle size={24} style={{ color: "#f04438" }} />
               </div>
-              <span className="badge coming-soon">Sắp ra mắt</span>
+              <span className="badge active">Từ hay sai</span>
               <h3>Wrong Words</h3>
               <p className="feature-desc">
                 Tổng hợp các từ bạn hay trả lời sai để luyện tập tập trung và cải thiện ghi nhớ.
               </p>
             </div>
+            <button className="feature-button secondary" onClick={onOpenWrongWords}>
+              Xem từ sai
+            </button>
           </div>
 
           <div className="feature-card disabled-card">

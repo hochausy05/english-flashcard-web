@@ -1,13 +1,13 @@
-import { useMemo, useState, useRef, useEffect } from "react";
-import { Volume2, VolumeX, CheckCircle2, XCircle, ArrowLeft, Play, Calendar, Award, RefreshCw, Layers } from "lucide-react";
+import { useMemo, useState, useRef, useEffect, useCallback } from "react";
+import { Volume2, VolumeX, CheckCircle2, XCircle, ArrowLeft, Play, Award, RefreshCw, Layers, CalendarClock, LogIn, Zap } from "lucide-react";
+import { useAuth } from "../context/AuthContext.jsx";
+import { fetchDueReviewWords } from "../utils/progressService.js";
 import { createQuestion } from "../utils/createQuestion.js";
 import { speakWord } from "../utils/speech.js";
 import { playFeedbackSound } from "../utils/feedbackSound.js";
-import { useAuth } from "../context/AuthContext.jsx";
 import { saveStudyResultToSupabase } from "../utils/studyResultService.js";
 
-
-// Hàm helper để xáo trộn mảng dùng Fisher-Yates
+// Helper to shuffle array
 function shuffle(items) {
   const arr = [...items];
   for (let i = arr.length - 1; i > 0; i--) {
@@ -17,7 +17,7 @@ function shuffle(items) {
   return arr;
 }
 
-// Hàm normalize đáp án nhập tiếng Anh
+// Helper to normalize input answer
 function normalizeTypingAnswer(value) {
   return String(value || "")
     .trim()
@@ -26,7 +26,7 @@ function normalizeTypingAnswer(value) {
     .replace(/\s+/g, " ");
 }
 
-// Hàm ẩn từ cần đoán trong câu ví dụ
+// Helper to mask word in example
 function maskWordInExample(example, word) {
   if (!example || !word) return example || "";
   const escapedWord = word.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
@@ -39,20 +39,20 @@ function maskWordInExample(example, word) {
   return masked;
 }
 
-export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
+export function DueReview({ cards, onBackHome }) {
   const { user } = useAuth();
+  
+  const [loadingWords, setLoadingWords] = useState(true);
+  const [dueWordsList, setDueWordsList] = useState([]);
   const [quizStatus, setQuizStatus] = useState("selecting"); // "selecting" | "playing" | "finished"
-  const [selectedCourse, setSelectedCourse] = useState(initialCourse || "foundation");
-  const [selectedDays, setSelectedDays] = useState([]);
   const [questionQueue, setQuestionQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answersLog, setAnswersLog] = useState([]);
   const [selectedAnswer, setSelectedAnswer] = useState(null);
-  const [saveStatus, setSaveStatus] = useState("idle"); // "idle" | "saving" | "success" | "error" | "not_logged_in"
+  const [saveStatus, setSaveStatus] = useState("idle"); // "idle" | "saving" | "success" | "error"
   const [saveErrorMsg, setSaveErrorMsg] = useState("");
   const hasSavedRef = useRef(false);
 
-  const [isDaysExpanded, setIsDaysExpanded] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => {
     const saved = localStorage.getItem("flashcard_feedback_sound_enabled");
     return saved !== null ? saved === "true" : true;
@@ -71,7 +71,51 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
     });
   };
 
-  // Tự động focus vào ô input khi chuyển sang câu mới ở chế độ gõ
+  // Fetch and map due words from database and CSV
+  const loadDueWords = useCallback(async () => {
+    if (!user) {
+      setLoadingWords(false);
+      return;
+    }
+    setLoadingWords(true);
+    try {
+      const dbProgress = await fetchDueReviewWords(user.id);
+      
+      const mapped = dbProgress.map(item => {
+        const dbVocab = item.vocab_items || {};
+        // Match with local CSV cards to retrieve correct example, audio, pos, etc. if missing in DB
+        const csvCard = cards.find(
+          c => c.id === String(dbVocab.legacy_id) || 
+               c.word.toLowerCase() === dbVocab.word?.toLowerCase()
+        ) || {};
+
+        return {
+          id: dbVocab.legacy_id || csvCard.id || dbVocab.id,
+          course: dbVocab.course_id ? (dbVocab.course_id === "922d185c-68b2-47cf-b9cf-0fe921e17892" ? "foundation" : "toeic1") : (csvCard.course || "foundation"),
+          day: String(dbVocab.day || csvCard.day || "1"),
+          word: dbVocab.word || csvCard.word || "",
+          pos: dbVocab.pos || csvCard.pos || "",
+          answer: dbVocab.answer || csvCard.answer || "",
+          ipa: dbVocab.ipa || csvCard.ipa || "",
+          example: dbVocab.example || csvCard.example || "",
+          audio: dbVocab.audio || csvCard.audio || "",
+          vocab_item_id: dbVocab.id
+        };
+      }).filter(item => item.word && item.answer);
+
+      setDueWordsList(mapped);
+    } catch (err) {
+      console.error("Error loading due review words:", err);
+    } finally {
+      setLoadingWords(false);
+    }
+  }, [user, cards]);
+
+  useEffect(() => {
+    loadDueWords();
+  }, [loadDueWords]);
+
+  // Autofocus input in typing mode
   useEffect(() => {
     if (quizStatus === "playing" && quizMode === "typing" && inputRef.current) {
       setTimeout(() => {
@@ -82,31 +126,8 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
     }
   }, [currentIndex, quizStatus, quizMode]);
 
-
-  // Gom nhóm các từ vựng theo buổi học (day) thuộc course đang chọn để hiển thị ở màn chọn buổi
-  const daysInfo = useMemo(() => {
-    const info = {};
-    cards
-      .filter((card) => card.course === selectedCourse)
-      .forEach((card) => {
-        const d = card.day || "1";
-        if (!info[d]) {
-          info[d] = 0;
-        }
-        info[d]++;
-      });
-
-    return Object.keys(info)
-      .sort((a, b) => Number(a) - Number(b))
-      .map((d) => ({
-        day: d,
-        count: info[d],
-      }));
-  }, [cards, selectedCourse]);
-
   const isAnswered = quizMode === "multipleChoice" ? selectedAnswer !== null : isAnsweredState;
 
-  // Lấy câu hỏi hiện tại từ questionQueue
   const currentQuestion = useMemo(() => {
     if (questionQueue.length === 0 || currentIndex >= questionQueue.length) {
       return null;
@@ -114,41 +135,36 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
     return questionQueue[currentIndex];
   }, [questionQueue, currentIndex]);
 
-  // Lấy số câu đúng hiện tại
   const correctCount = useMemo(() => {
     return answersLog.filter((item) => item.isCorrect).length;
   }, [answersLog]);
 
-  // Lọc các từ trả lời sai để hiển thị ôn tập ở màn kết quả
   const incorrectAnswers = useMemo(() => {
     return answersLog.filter((item) => !item.isCorrect);
   }, [answersLog]);
 
-  // Tính điểm hệ 10
   const score10 = useMemo(() => {
     if (questionQueue.length === 0) return 0;
     const raw = (correctCount / questionQueue.length) * 10;
-    return Number(raw.toFixed(1)); // Làm tròn 1 chữ số thập phân, tự động rút gọn số nguyên như 10.0 -> 10
+    return Number(raw.toFixed(1));
   }, [correctCount, questionQueue]);
 
-  // Tự động lưu tiến độ học tập lên Supabase khi kết thúc bài học
+  // Save review study result when finished
   useEffect(() => {
     if (quizStatus === "finished") {
       if (hasSavedRef.current) return;
       hasSavedRef.current = true;
 
-      if (!user) {
-        setSaveStatus("not_logged_in");
-        return;
-      }
-
       async function saveResult() {
         setSaveStatus("saving");
+        // Get the course code of the first card or default
+        const courseCode = questionQueue[0]?.course || "foundation";
+
         const res = await saveStudyResultToSupabase({
           user,
-          courseCode: selectedCourse,
-          selectedDays,
-          mode: quizMode,
+          courseCode,
+          selectedDays: [...new Set(questionQueue.map(q => q.day))],
+          mode: "due_review",
           totalQuestions: questionQueue.length,
           correctCount: correctCount,
           wrongCount: questionQueue.length - correctCount,
@@ -171,55 +187,17 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
       setSaveStatus("idle");
       setSaveErrorMsg("");
     }
-  }, [quizStatus, user, selectedCourse, selectedDays, quizMode, questionQueue.length, correctCount, score10, answersLog]);
+  }, [quizStatus, user, questionQueue, correctCount, score10, answersLog]);
 
-  // Hàm chuyển đổi toggle chọn bộ học
-  function handleSelectCourse(course) {
-    if (course !== selectedCourse) {
-      setSelectedCourse(course);
-      setSelectedDays([]); // Xóa các ngày đã chọn để không lẫn lộn giữa các bộ học
-      setIsDaysExpanded(false);
-    }
-  }
+  function handleStartReview() {
+    if (dueWordsList.length === 0) return;
 
-  // Hàm chuyển đổi toggle chọn buổi
-  function handleToggleDay(day) {
-    if (selectedDays.includes(day)) {
-      setSelectedDays((prev) => prev.filter((d) => d !== day));
-    } else {
-      setSelectedDays((prev) => [...prev, day]);
-    }
-  }
+    // Shuffle cards
+    const shuffled = shuffle(dueWordsList);
 
-  // Chọn hoặc bỏ chọn toàn bộ
-  function handleToggleSelectAll() {
-    if (selectedDays.length === daysInfo.length) {
-      setSelectedDays([]);
-    } else {
-      setSelectedDays(daysInfo.map((d) => d.day));
-    }
-  }
-
-  // Khởi động lượt học từ các buổi được chọn
-  function handleStartQuiz() {
-    if (selectedDays.length === 0) return;
-
-    // Lọc ra các card thuộc course và buổi học được chọn
-    const sessionCards = cards.filter(
-      (card) => card.course === selectedCourse && selectedDays.includes(card.day)
-    );
-
-    if (sessionCards.length === 0) {
-      alert("Không tìm thấy từ vựng nào thuộc các buổi học đã chọn. Vui lòng tải lại trang để cập nhật hoặc chọn buổi khác!");
-      return;
-    }
-
-    // Xáo trộn danh sách câu hỏi chính một lần duy nhất
-    const shuffledSession = shuffle(sessionCards);
-
-    // Tạo queue câu hỏi, tính toán trước 4 phương án cho mỗi câu để tránh shuffle lại khi render
-    const queue = shuffledSession.map((card) => {
-      return createQuestion(card, sessionCards, cards);
+    // Create options for multiple choice
+    const queue = shuffled.map((card) => {
+      return createQuestion(card, dueWordsList, cards);
     });
 
     setQuestionQueue(queue);
@@ -231,7 +209,6 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
     setQuizStatus("playing");
   }
 
-  // Chọn một đáp án (Chế độ trắc nghiệm)
   function handleSelect(option) {
     if (isAnswered) return;
 
@@ -242,7 +219,6 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
       playFeedbackSound(isCorrect);
     }
 
-    // Lưu vào answersLog
     setAnswersLog((prev) => [
       ...prev,
       {
@@ -260,7 +236,6 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
     ]);
   }
 
-  // Kiểm tra đáp án nhập (Chế độ gõ)
   function handleCheckAnswer() {
     if (isAnswered) return;
 
@@ -275,7 +250,6 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
 
     setIsAnsweredState(true);
 
-    // Lưu vào answersLog
     setAnswersLog((prev) => [
       ...prev,
       {
@@ -294,7 +268,6 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
     ]);
   }
 
-  // Chuyển câu hỏi hoặc kết thúc
   function handleNext() {
     if (currentIndex + 1 >= questionQueue.length) {
       setQuizStatus("finished");
@@ -306,211 +279,159 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
     }
   }
 
-  // Nút quay lại của từng màn hình
   function handleBack() {
     if (quizStatus === "playing") {
-      if (confirm("Bạn có chắc muốn dừng bài học và quay lại màn chọn buổi không?")) {
+      if (confirm("Bạn có chắc muốn dừng ôn tập và quay lại không?")) {
         setQuizStatus("selecting");
       }
     } else if (quizStatus === "finished") {
+      // Reload lists
+      loadDueWords();
       setQuizStatus("selecting");
     } else {
       onBackHome();
     }
   }
 
-  // Trả về thông điệp nhận xét theo điểm số
-  function getScoreMessage(score) {
-    if (score >= 9) return "Xuất sắc! 🎉";
-    if (score >= 7.5) return "Tuyệt vời! 👍";
-    if (score >= 5) return "Khá tốt! 💪";
-    return "Cần cố gắng thêm! 📚";
-  }
+  // --- RENDERING VIEWS ---
 
-  // --- RENDERING SCREENS ---
-
-  // 1. Màn hình chọn buổi học (Selecting Screen)
-  if (quizStatus === "selecting") {
-    const showCollapsed = selectedDays.length > 0 && !isDaysExpanded;
-
+  if (!user) {
     return (
       <div className="quiz-flow-container">
-        <div className="back-nav">
-          <button className="ghost-button" onClick={handleBack}>
+        <nav className="back-nav">
+          <button className="ghost-button" onClick={onBackHome}>
             <ArrowLeft size={16} /> Trang chủ
           </button>
-        </div>
-
-        <section className="selection-screen card">
-          <div className="screen-header">
-            <Layers className="header-icon" size={32} />
-            <h2>Chọn buổi học từ vựng</h2>
-            <p className="subtitle">
-              Chọn một hoặc nhiều buổi học bằng checkbox để bắt đầu ôn luyện. Hệ thống sẽ trộn câu hỏi từ các buổi đã chọn.
-            </p>
-          </div>
-
-          <div className={`days-selector-container ${showCollapsed ? "mobile-collapsed" : ""}`}>
-            {/* Mobile Collapsed Summary */}
-            <div className="mobile-collapsed-summary">
-              <div className="collapsed-info">
-                <span className="collapsed-course">
-                  {selectedCourse === "foundation" ? "Nền tảng" : "TOEIC 1"}
-                </span>
-                <span className="collapsed-days">
-                  Đang chọn: {selectedDays.map((d) => `Buổi ${d}`).join(", ")}
-                </span>
-              </div>
-              <button
-                type="button"
-                className="change-days-btn"
-                onClick={() => setIsDaysExpanded(true)}
-              >
-                Đổi buổi
-              </button>
-            </div>
-
-            {/* Full Selection UI */}
-            <div className="full-selector-ui">
-              <div className="course-selector">
-                <button
-                  type="button"
-                  className={`course-btn ${selectedCourse === "foundation" ? "active" : ""}`}
-                  onClick={() => handleSelectCourse("foundation")}
-                >
-                  <span className="course-btn-title">Nền tảng</span>
-                  <span className="course-btn-subtitle">Foundation Course</span>
-                </button>
-                <button
-                  type="button"
-                  className={`course-btn ${selectedCourse === "toeic1" ? "active" : ""}`}
-                  onClick={() => handleSelectCourse("toeic1")}
-                >
-                  <span className="course-btn-title">TOEIC 1</span>
-                  <span className="course-btn-subtitle">TOEIC Prep 1</span>
-                </button>
-              </div>
-
-              <div className="selection-controls">
-                <button type="button" className="text-button" onClick={handleToggleSelectAll}>
-                  {selectedDays.length === daysInfo.length ? "Bỏ chọn tất cả" : "Chọn tất cả"}
-                </button>
-                {selectedDays.length > 0 && (
-                  <button
-                    type="button"
-                    className="text-button collapse-btn-mobile-only"
-                    onClick={() => setIsDaysExpanded(false)}
-                  >
-                    Thu gọn
-                  </button>
-                )}
-                <span className="selected-summary">
-                  Đã chọn <strong>{selectedDays.length}</strong> / {daysInfo.length} buổi học
-                </span>
-              </div>
-
-              <div className="days-grid">
-                {daysInfo.map((info) => {
-                  const isSelected = selectedDays.includes(info.day);
-                  return (
-                    <div
-                      key={info.day}
-                      className={`day-card ${isSelected ? "selected" : ""}`}
-                      onClick={() => handleToggleDay(info.day)}
-                    >
-                      <div className="day-card-left">
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => handleToggleDay(info.day)}
-                          onClick={(e) => e.stopPropagation()} // Chống bubble để tránh kích hoạt click của cả card
-                        />
-                        <div className="day-info">
-                          <span className="day-title">Buổi {info.day}</span>
-                          <span className="day-count">{info.count} từ vựng</span>
-                        </div>
-                      </div>
-                      <Calendar className="day-card-icon" size={20} />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-
-          <div className="quiz-mode-selector-wrapper">
-            <h3 className="selector-section-title">Chọn kiểu kiểm tra</h3>
-            <div className="quiz-mode-options">
-              <button
-                type="button"
-                className={`quiz-mode-btn ${quizMode === "multipleChoice" ? "active" : ""}`}
-                onClick={() => setQuizMode("multipleChoice")}
-              >
-                <div className="quiz-mode-info">
-                  <span className="quiz-mode-title">Trắc nghiệm</span>
-                  <span className="quiz-mode-desc">Chọn đáp án đúng trong 4 lựa chọn</span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                className={`quiz-mode-btn ${quizMode === "typing" ? "active" : ""}`}
-                onClick={() => setQuizMode("typing")}
-              >
-                <div className="quiz-mode-info">
-                  <span className="quiz-mode-title">Nhập từ tiếng Anh</span>
-                  <span className="quiz-mode-desc">Nhìn nghĩa tiếng Việt và nhập từ tiếng Anh</span>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <div className="action-box">
-            <button
-              className="primary-button start-button"
-              disabled={selectedDays.length === 0}
-              onClick={handleStartQuiz}
-            >
-              <Play size={18} fill="white" /> Bắt đầu học
-            </button>
-          </div>
+        </nav>
+        <section className="selection-screen card" style={{ padding: "40px", textAlign: "center" }}>
+          <CalendarClock size={48} style={{ color: "#d97706", marginBottom: "16px" }} />
+          <h2>Ôn tập hôm nay</h2>
+          <p style={{ color: "#475467", marginBottom: "24px" }}>
+            Vui lòng đăng nhập để sử dụng tính năng ôn tập hàng ngày theo thuật toán lặp lại ngắt quãng.
+          </p>
         </section>
-
-        {/* Sticky bottom action bar for mobile */}
-        <div className="mobile-sticky-action-bar">
-          <span className="sticky-summary">
-            Đã chọn <strong>{selectedDays.length}</strong>/{daysInfo.length} buổi
-          </span>
-          <button
-            type="button"
-            className="primary-button sticky-start-btn"
-            disabled={selectedDays.length === 0}
-            onClick={handleStartQuiz}
-          >
-            Bắt đầu học
-          </button>
-        </div>
       </div>
     );
   }
 
-  // 2. Màn hình ôn luyện (Playing Quiz Screen)
+  if (loadingWords) {
+    return (
+      <div className="quiz-flow-container">
+        <nav className="back-nav">
+          <button className="ghost-button" onClick={onBackHome}>
+            <ArrowLeft size={16} /> Trang chủ
+          </button>
+        </nav>
+        <section className="selection-screen card" style={{ padding: "40px", textAlign: "center" }}>
+          <div className="progress-loading-spinner" style={{ margin: "0 auto 16px" }}></div>
+          <p>Đang tìm danh sách từ cần ôn...</p>
+        </section>
+      </div>
+    );
+  }
+
+  // 1. SELECTING MODE SCREEN
+  if (quizStatus === "selecting") {
+    return (
+      <div className="quiz-flow-container">
+        <nav className="back-nav">
+          <button className="ghost-button" onClick={handleBack}>
+            <ArrowLeft size={16} /> Trang chủ
+          </button>
+        </nav>
+
+        <section className="selection-screen card">
+          <div className="screen-header">
+            <CalendarClock className="header-icon" size={32} style={{ color: "#d97706" }} />
+            <h2>Ôn tập hôm nay (Spaced Repetition)</h2>
+            <p className="subtitle">
+              Hệ thống đã chọn ra các từ đã đến thời gian ôn lại dựa trên lịch sử trả lời của bạn để đạt hiệu quả ghi nhớ tốt nhất.
+            </p>
+          </div>
+
+          {dueWordsList.length === 0 ? (
+            <div className="due-empty-state" style={{ textAlign: "center", padding: "32px 0" }}>
+              <div className="due-success-icon" style={{ fontSize: "48px", marginBottom: "16px" }}>🎉</div>
+              <h3 style={{ color: "#027a48", fontWeight: "800", marginBottom: "8px" }}>Tất cả đã hoàn thành!</h3>
+              <p style={{ color: "#475467", maxWidth: "480px", margin: "0 auto" }}>
+                Tuyệt vời! Bạn không có từ nào cần ôn hôm nay. Hãy quay lại vào ngày mai hoặc tiếp tục học các bài mới!
+              </p>
+              <button className="primary-button" onClick={onBackHome} style={{ marginTop: "24px" }}>
+                Về trang chủ
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="due-summary-badge" style={{
+                background: "rgba(245, 158, 11, 0.08)",
+                border: "1px solid rgba(245, 158, 11, 0.2)",
+                color: "#b45309",
+                padding: "16px",
+                borderRadius: "14px",
+                fontWeight: "700",
+                textAlign: "center",
+                marginBottom: "24px"
+              }}>
+                Bạn đang có <strong style={{ fontSize: "20px" }}>{dueWordsList.length}</strong> từ cần ôn tập.
+              </div>
+
+              <div className="quiz-mode-selector-wrapper">
+                <h3 className="selector-section-title">Chọn kiểu kiểm tra</h3>
+                <div className="quiz-mode-options">
+                  <button
+                    type="button"
+                    className={`quiz-mode-btn ${quizMode === "multipleChoice" ? "active" : ""}`}
+                    onClick={() => setQuizMode("multipleChoice")}
+                  >
+                    <div className="quiz-mode-info">
+                      <span className="quiz-mode-title">Trắc nghiệm</span>
+                      <span className="quiz-mode-desc">Chọn đáp án đúng trong 4 lựa chọn</span>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    className={`quiz-mode-btn ${quizMode === "typing" ? "active" : ""}`}
+                    onClick={() => setQuizMode("typing")}
+                  >
+                    <div className="quiz-mode-info">
+                      <span className="quiz-mode-title">Nhập từ tiếng Anh</span>
+                      <span className="quiz-mode-desc">Nhìn nghĩa tiếng Việt và nhập từ tiếng Anh</span>
+                    </div>
+                  </button>
+                </div>
+              </div>
+
+              <div className="action-box">
+                <button
+                  className="primary-button start-button"
+                  onClick={handleStartReview}
+                  style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}
+                >
+                  <Play size={18} fill="white" /> Bắt đầu ôn tập
+                </button>
+              </div>
+            </>
+          )}
+        </section>
+      </div>
+    );
+  }
+
+  // 2. PLAYING SCREEN
   if (quizStatus === "playing") {
     if (!currentQuestion) {
       return (
         <div className="quiz-flow-container">
-          <div className="back-nav">
+          <nav className="back-nav">
             <button className="ghost-button" onClick={handleBack}>
               <ArrowLeft size={16} /> Quay lại
             </button>
-          </div>
+          </nav>
           <section className="quiz card" style={{ padding: '36px', textAlign: 'center' }}>
-            <h3 style={{ color: '#b42318', marginBottom: '12px' }}>Không có dữ liệu câu hỏi</h3>
-            <p style={{ color: '#475467', marginBottom: '24px' }}>
-              Không tìm thấy từ vựng nào thuộc các buổi học đã chọn. Vui lòng thử tải lại trang hoặc chọn buổi học khác.
-            </p>
+            <h3 style={{ color: '#b42318', marginBottom: '12px' }}>Không có câu hỏi</h3>
             <button className="primary-button" onClick={() => setQuizStatus("selecting")}>
-              Chọn buổi học khác
+              Quay lại
             </button>
           </section>
         </div>
@@ -525,7 +446,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
       <div className="quiz-flow-container">
         <div className="back-nav">
           <button className="ghost-button" onClick={handleBack}>
-            <ArrowLeft size={16} /> Dừng học
+            <ArrowLeft size={16} /> Dừng ôn
           </button>
           <button type="button" className="sound-toggle-btn" onClick={toggleSound} title="Bật/Tắt âm thanh phản hồi">
             {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
@@ -536,18 +457,18 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
         <section className="quiz card">
           <div className="topbar">
             <div>
-              <span className="label">Tiến độ</span>
+              <span className="label">Tiến độ ôn</span>
               <strong>
                 {currentIndex + 1} / {questionQueue.length}
               </strong>
             </div>
             <div>
-              <span className="label">Số câu đúng</span>
+              <span className="label">Câu đúng</span>
               <strong className="correct-counter">{correctCount}</strong>
             </div>
             <div>
-              <span className="label">Buổi học</span>
-              <span className="badge-inline">Buổi {currentQuestion.day}</span>
+              <span className="label">Lớp học</span>
+              <span className="badge-inline" style={{ background: "rgba(245, 158, 11, 0.1)", color: "#b45309" }}>Ôn tập</span>
             </div>
           </div>
 
@@ -610,7 +531,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
               )}
             </>
           ) : (
-            // Chế độ gõ nhập tiếng Anh
+            // Typing mode
             <div className="typing-quiz-container">
               <div className="typing-word-box">
                 <span className="label">Nghĩa tiếng Việt</span>
@@ -650,7 +571,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
                   autoCorrect="off"
                   spellCheck="false"
                 />
-                
+
                 {!isAnswered && (
                   <button
                     className="primary-button check-btn"
@@ -665,11 +586,11 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
               {isAnswered && (
                 <div className="typing-result-feedback card">
                   <div className="feedback-status-header">
-                    {isCorrect ? (
-                      <span className="status-label correct"><CheckCircle2 size={20} /> Chính xác!</span>
-                    ) : (
-                      <span className="status-label wrong"><XCircle size={20} /> Chưa đúng rồi!</span>
-                    )}
+                     {isCorrect ? (
+                       <span className="status-label correct"><CheckCircle2 size={20} /> Chính xác!</span>
+                     ) : (
+                       <span className="status-label wrong"><XCircle size={20} /> Chưa đúng rồi!</span>
+                     )}
                   </div>
 
                   <div className="correct-word-details">
@@ -677,7 +598,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
                     <div className="correct-word-row">
                       <span className="word-text">{currentQuestion.word}</span>
                       {currentQuestion.ipa && <span className="word-ipa">/{currentQuestion.ipa.replace(/\//g, "")}/</span>}
-                      
+
                       <button
                         className="speaker-mini-btn font-sound-btn"
                         onClick={() => speakWord(currentQuestion.word, currentQuestion.audio)}
@@ -709,30 +630,27 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
     );
   }
 
-  // 3. Màn hình kết quả (Finished/Result Screen)
+  // 3. FINISHED SCREEN
   if (quizStatus === "finished") {
     return (
       <div className="quiz-flow-container">
-        <div className="back-nav">
+        <nav className="back-nav">
           <button className="ghost-button" onClick={handleBack}>
-            <ArrowLeft size={16} /> Chọn buổi
+            <ArrowLeft size={16} /> Màn hình ôn
           </button>
-        </div>
+        </nav>
 
         <section className="results-screen card">
           <div className="results-header">
-            <Award className="award-icon" size={48} />
-            <h2>Kết quả buổi học</h2>
+            <Award className="award-icon" size={48} style={{ color: "#d97706" }} />
+            <h2>Kết quả Ôn tập</h2>
             <div className="score-display">
               <span className="score-num">{score10}</span>
               <span className="score-total">/ 10 điểm</span>
             </div>
-            <p className="score-comment">{getScoreMessage(score10)}</p>
-            {/* Trạng thái lưu kết quả Supabase */}
             <div className={`save-status-msg ${saveStatus}`}>
-              {saveStatus === "not_logged_in" && "Đăng nhập để lưu tiến độ học."}
               {saveStatus === "saving" && "Đang lưu kết quả..."}
-              {saveStatus === "success" && "Đã lưu kết quả học."}
+              {saveStatus === "success" && "Đã lưu kết quả ôn tập thành công."}
               {saveStatus === "error" && `Không lưu được kết quả: ${saveErrorMsg}`}
             </div>
           </div>
@@ -754,15 +672,15 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
 
           {incorrectAnswers.length > 0 && (
             <div className="wrong-review-box">
-              <h3>Danh sách từ làm sai cần ôn tập ({incorrectAnswers.length} từ)</h3>
+              <h3>Danh sách từ làm sai cần chú ý ({incorrectAnswers.length} từ)</h3>
               <div className="review-table-wrapper">
                 <table className="review-table">
                   <thead>
                     <tr>
                       <th>Từ vựng</th>
                       <th>Loại từ</th>
-                      <th>{quizMode === "typing" ? "Nghĩa tiếng Việt" : "Nghĩa chuẩn"}</th>
-                      <th>{quizMode === "typing" ? "Kết quả nhập" : "Lựa chọn của bạn"}</th>
+                      <th>Nghĩa chuẩn</th>
+                      <th>Lựa chọn của bạn</th>
                       <th>Nghe</th>
                     </tr>
                   </thead>
@@ -803,7 +721,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
                 </table>
               </div>
 
-              {/* Giao diện danh sách card cho mobile */}
+              {/* Mobile review list card style */}
               <div className="review-cards-list">
                 {incorrectAnswers.map((item, idx) => (
                   <div key={idx} className="review-card-item">
@@ -820,7 +738,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
                         <Volume2 size={16} />
                       </button>
                     </div>
-                    
+
                     <div className="review-card-body">
                       <div className="review-card-detail">
                         <span className="detail-label">{item.mode === "typing" ? "Nghĩa tiếng Việt:" : "Nghĩa đúng:"}</span>
@@ -853,11 +771,8 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
           )}
 
           <div className="results-actions">
-            <button className="primary-button action-btn" onClick={handleStartQuiz}>
-              <RefreshCw size={16} /> Học lại buổi này
-            </button>
-            <button className="secondary-button action-btn" onClick={() => setQuizStatus("selecting")}>
-              Chọn buổi khác
+            <button className="primary-button action-btn" onClick={handleStartReview} style={{ background: "linear-gradient(135deg, #f59e0b, #d97706)" }}>
+              <RefreshCw size={16} /> Ôn tập lại buổi này
             </button>
             <button className="ghost-button action-btn" onClick={onBackHome}>
               Về trang chủ
