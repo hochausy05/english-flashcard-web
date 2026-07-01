@@ -575,9 +575,10 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
               <p className="example">“{currentQuestion.example || "Chưa có câu ví dụ."}”</p>
 
               <div className="options">
-                {currentQuestion.options.map((option) => {
+                {currentQuestion.options.map((option, idx) => {
                   const isThisCorrect = option === currentQuestion.answer;
                   const isThisSelected = option === selectedAnswer;
+                  const labelLetter = ["A", "B", "C", "D"][idx] || "";
 
                   let className = "option";
                   if (isAnswered && isThisCorrect) className += " correct";
@@ -590,9 +591,10 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
                       onClick={() => handleSelect(option)}
                       disabled={isAnswered}
                     >
-                      <span>{option}</span>
-                      {isAnswered && isThisCorrect && <CheckCircle2 size={20} />}
-                      {isAnswered && isThisSelected && !isThisCorrect && <XCircle size={20} />}
+                      <span className="option-label">{labelLetter}</span>
+                      <span className="option-text">{option}</span>
+                      {isAnswered && isThisCorrect && <CheckCircle2 size={20} className="option-status-icon" />}
+                      {isAnswered && isThisSelected && !isThisCorrect && <XCircle size={20} className="option-status-icon" />}
                     </button>
                   );
                 })}
