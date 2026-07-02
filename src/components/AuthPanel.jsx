@@ -55,12 +55,13 @@ export function AuthPanel({ onBackHome }) {
           setMessage({ type: "success", text: "Đăng nhập thành công! Đang chuyển hướng..." });
         }
       } else {
+        const fallbackName = trimmedEmail.split("@")[0];
         const { data, error } = await supabase.auth.signUp({
           email: trimmedEmail,
           password,
           options: {
             data: {
-              display_name: displayName || trimmedEmail
+              display_name: displayName ? displayName.trim() : fallbackName
             }
           }
         });

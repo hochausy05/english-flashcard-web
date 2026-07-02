@@ -240,22 +240,29 @@ export function VocabularyReview({ cards, onBackHome, initialCourse }) {
                 return (
                   <div
                     key={info.day}
-                    className={`day-card ${isSelected ? "selected" : ""}`}
+                    className={`lesson-card ${isSelected ? "selected" : ""}`}
                     onClick={() => handleToggleDay(info.day)}
                   >
-                    <div className="day-card-left">
+                    <div className="lesson-card-header">
                       <input
                         type="checkbox"
+                        className="day-checkbox"
                         checked={isSelected}
                         onChange={() => handleToggleDay(info.day)}
                         onClick={(e) => e.stopPropagation()}
                       />
-                      <div className="day-info">
-                        <span className="day-title">Buổi {info.day}</span>
-                        <span className="day-count">{info.count} từ vựng</span>
+                      <span className="day-title">Buổi {info.day}</span>
+                    </div>
+
+                    <div className="lesson-card-body">
+                      <div className="lesson-uncompleted-placeholder">
+                        <Calendar className="lesson-card-icon" size={20} />
                       </div>
                     </div>
-                    <Calendar className="day-card-icon" size={20} />
+
+                    <div className="lesson-card-footer">
+                      <span className="day-count">{info.count} từ vựng</span>
+                    </div>
                   </div>
                 );
               })}

@@ -7,6 +7,7 @@ Hệ thống Web học từ vựng tiếng Anh thông minh tích hợp Supabase 
 - **Listening Practice**: Luyện nghe phát âm từ vựng và chọn đáp án trắc nghiệm hoặc nhập từ để kiểm tra.
 - **Vocabulary Review**: Xem lại từ vựng, tìm kiếm realtime, lọc theo loại từ (n, v, adj, adv) và nghe phát âm.
 - **Progress Dashboard**: Thống kê số phiên học, số từ đã học, tỷ lệ chính xác trung bình và lịch sử phiên học.
+- **Bảng xếp hạng từ vựng (Leaderboard)**: Đua top vinh danh tiến độ học tập lành mạnh giữa các người học (điểm tính dựa trên số từ đã học, số buổi hoàn thành 100% và độ chính xác). Lọc bỏ tài khoản admin và bảo mật email/UUID cá nhân.
 - **Wrong Words & Due Review**: Chuyên trang ôn luyện tập trung các từ hay trả lời sai và ôn tập Spaced Repetition đến lịch.
 - **Tích xanh hoàn thành**: Chỉ đánh dấu tích xanh hoàn thành buổi học nếu trả lời đúng 100% không làm sai câu nào trong phiên.
 - **Quản trị viên (Admin Panel)**: Giao diện quản lý thêm, sửa, xóa mềm từ vựng và import/preview tệp CSV dữ liệu trực quan.

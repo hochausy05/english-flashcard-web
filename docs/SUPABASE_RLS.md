@@ -110,3 +110,24 @@ DROP POLICY IF EXISTS "Allow users to read their own profile" ON profiles;
 DROP POLICY IF EXISTS "Allow users to update their own profile" ON profiles;
 DROP POLICY IF EXISTS "Allow admins to read all profiles" ON profiles;
 ```
+
+---
+
+## 6. Bảo mật Bảng xếp hạng từ vựng (SQL RPC Function)
+
+Thay vì cho phép user thường select trực tiếp từ bảng `profiles` (làm rò rỉ email/role), hệ thống sử dụng một hàm database RPC bảo mật:
+
+- **Hàm SQL**: `public.get_vocabulary_leaderboard(limit_count integer)`
+- **Cơ chế**: `SECURITY DEFINER` (thực thi dưới quyền owner để tổng hợp stats từ các bảng bị RLS).
+- **search_path**: Phải đặt cứng `SET search_path = public` để tránh các lỗ hổng hijacking search path.
+- **Che giấu thông tin**:
+  - Lọc bỏ admin: `WHERE profiles.role <> 'admin'`.
+  - Che dấu email/UUID: Sử dụng display_name nếu có, tách lấy prefix nếu là email, hoặc tự động tạo dạng ẩn danh `"Người học #abcd"` dùng 4 ký tự cuối của UUID.
+  - Không trả về email, role, hay UUID thô lên client.
+- **Phân quyền thực thi (Privileges)**:
+  ```sql
+  REVOKE ALL ON FUNCTION public.get_vocabulary_leaderboard(integer) FROM PUBLIC;
+  GRANT EXECUTE ON FUNCTION public.get_vocabulary_leaderboard(integer) TO authenticated;
+  ```
+  *Mặc định: Chỉ người dùng đã đăng nhập (`authenticated`) mới được gọi RPC để xem bảng xếp hạng. Người dùng vãng lai (`anon`) sẽ bị chặn từ database.*
+

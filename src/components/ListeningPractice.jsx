@@ -1,5 +1,5 @@
 import { useMemo, useState, useRef, useEffect } from "react";
-import { Volume2, VolumeX, CheckCircle2, XCircle, ArrowLeft, Play, Calendar, Award, RefreshCw, Layers } from "lucide-react";
+import { Volume2, VolumeX, Check, CheckCircle2, XCircle, ArrowLeft, Play, Calendar, Award, RefreshCw, Layers } from "lucide-react";
 import { speakWord } from "../utils/speech.js";
 import { playFeedbackSound } from "../utils/feedbackSound.js";
 import { useAuth } from "../context/AuthContext.jsx";
@@ -243,6 +243,12 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
         if (res.success) {
           setSaveStatus("success");
           setSaveErrorMsg("");
+          try {
+            const map = await fetchLessonCompletionMap(user.id, selectedCourse);
+            setCompletionMap(map);
+          } catch (err) {
+            console.error("Failed to refresh lesson completion map in Listening background:", err);
+          }
         } else {
           setSaveStatus("error");
           setSaveErrorMsg(res.error?.message || "Lỗi không xác định");
@@ -526,7 +532,7 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
                   const isCompleted = completion?.isCompleted;
                   const bestAccuracy = completion?.bestAccuracy || 0;
 
-                  let cardClassName = "day-card";
+                  let cardClassName = "lesson-card";
                   if (isSelected) cardClassName += " selected";
                   if (isCompleted) cardClassName += " completed";
 
@@ -536,31 +542,40 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
                       className={cardClassName}
                       onClick={() => handleToggleDay(info.day)}
                     >
-                      <div className="day-card-left">
+                      <div className="lesson-card-header">
                         <input
                           type="checkbox"
+                          className="day-checkbox"
                           checked={isSelected}
                           onChange={() => handleToggleDay(info.day)}
-                          onClick={(e) => e.stopPropagation()}
+                          onClick={(e) => e.stopPropagation()} // Chống bubble để tránh kích hoạt click của cả card
                         />
-                        <div className="day-info">
-                          <span className="day-title">Buổi {info.day}</span>
-                          <span className="day-count">{info.count} từ vựng</span>
-                          {!isCompleted && bestAccuracy > 0 && (
-                            <span className="day-partial-text">
-                              Đã thử (Tốt nhất {bestAccuracy}%)
-                            </span>
-                          )}
-                        </div>
+                        <span className="day-title">Buổi {info.day}</span>
                       </div>
-                      <div className="day-card-right">
+
+                      <div className="lesson-card-body">
                         {isCompleted ? (
-                          <div className="day-completed-badge" title="Đã hoàn thành 100%">
-                            <CheckCircle2 size={16} className="completed-icon" />
-                            <span className="completed-text">Hoàn thành</span>
+                          <div className="lesson-completed-circle">
+                            <Check className="big-check-icon" size={24} />
                           </div>
                         ) : (
-                          <Calendar className="day-card-icon" size={20} />
+                          <div className="lesson-uncompleted-placeholder">
+                            <Calendar className="lesson-card-icon" size={20} />
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="lesson-card-footer">
+                        <span className="day-count">{info.count} từ vựng</span>
+                        {isCompleted ? (
+                          <span className="day-status-text completed">Đã hoàn thành</span>
+                        ) : bestAccuracy > 0 ? (
+                          <div className="day-status-group">
+                            <span className="day-status-text partial">Chưa hoàn thành</span>
+                            <span className="day-accuracy-text">Tốt nhất {bestAccuracy}%</span>
+                          </div>
+                        ) : (
+                          <span className="day-status-text unstarted">Chưa luyện tập</span>
                         )}
                       </div>
                     </div>

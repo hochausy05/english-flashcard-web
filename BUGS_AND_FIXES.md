@@ -22,6 +22,65 @@ Mỗi khi sửa lỗi xong, phải thêm vào file này.
 - ...
 ```
 
+## Lỗi: Rò rỉ thông tin nhạy cảm (email, UUID) hoặc hiển thị tài khoản admin trên bảng xếp hạng vinh danh (Leaderboard)
+
+### Hiện tượng
+- Email hoặc thông tin cá nhân của người học bị hiển thị công khai trên bảng xếp hạng chung, hoặc các tài khoản có vai trò quản trị viên (`admin`) chen chân vào bảng xếp hạng tiến độ học tập, gây ảnh hưởng đến tính công bằng và bảo mật thông tin.
+
+### Nguyên nhân
+- Thực hiện select trực tiếp dữ liệu từ bảng `public.profiles` mà không lọc theo role, hoặc trả về toàn bộ dữ liệu (bao gồm cả trường email, role) về cho client xử lý. Điều này vừa làm lộ thông tin nhạy cảm vừa khiến người dùng bình thường đọc được hồ sơ cá nhân của người dùng khác.
+
+### Cách fix
+- Chuyển toàn bộ logic tổng hợp tiến độ và xếp hạng vào hàm SQL RPC `public.get_vocabulary_leaderboard()` trên database sử dụng cơ chế `SECURITY DEFINER` để truy xuất an toàn.
+- Lọc bỏ admin trực tiếp trong SQL: `WHERE COALESCE(p.role, 'user') <> 'admin'`.
+- Ẩn email/tên thật: Định dạng display_name an toàn sử dụng `split_part` trước dấu `@` (email prefix) hoặc tên ẩn danh `'Người học #abcd'` dùng 4 ký tự cuối của UUID.
+- Không select và trả về các trường email, role, user_id thật về client.
+- Thu hồi quyền thực thi mặc định và chỉ cấp quyền `EXECUTE` cho authenticated role:
+  ```sql
+  REVOKE ALL ON FUNCTION public.get_vocabulary_leaderboard(integer) FROM PUBLIC;
+  GRANT EXECUTE ON FUNCTION public.get_vocabulary_leaderboard(integer) TO authenticated;
+  ```
+
+### Không được lặp lại
+- Không bao giờ cấp quyền SELECT public trên bảng `profiles` cho user thường, và không bao giờ trả về email hoặc thông tin cá nhân thô của người dùng khác lên client phục vụ làm bảng xếp hạng. Hãy luôn xử lý che giấu thông tin từ phía DB.
+
+## Lỗi: Màn chọn buổi học không hiện dấu tích xanh báo đã hoàn thành (mặc dù đã học đúng 100%)
+
+### Hiện tượng
+- Khi người dùng làm đúng 100% tất cả câu hỏi của một buổi học, tiến trình và kết quả phiên học được lưu chính xác vào cơ sở dữ liệu. Tuy nhiên, khi quay lại màn chọn buổi học của Flashcard Quiz, buổi học đó vẫn không hiển thị dấu tích xanh báo đã hoàn thành.
+
+### Nguyên nhân
+- Biến trạng thái hoàn thành buổi học (`completionMap`) trong [FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx) chỉ được fetch lại khi `quizStatus` chuyển sang `"selecting"`. Nhưng do quá trình lưu kết quả phiên học `saveStudyResultToSupabase` là bất đồng bộ (async), khi người dùng bấm "Quay lại màn chọn buổi" ngay sau khi hoàn thành, tiến trình fetch `loadCompletion` có thể chạy trước hoặc đồng thời với quá trình insert hoàn thành vào DB, dẫn đến việc không lấy được dữ liệu hoàn thành mới nhất.
+- Hơn nữa, chính sách RLS SELECT trên bảng `study_answers` có chứa một subquery `EXISTS` phức tạp để check quyền sở hữu thông qua bảng `study_sessions`, điều này có thể gây trễ truy vấn hoặc lỗi không mong muốn trên Supabase do các index chưa được update kịp thời ở DB level.
+
+### Cách fix
+- Gọi trực tiếp hàm fetch lại `fetchLessonCompletionMap` ngay lập tức sau khi có phản hồi lưu kết quả thành công (`res.success`) ở pha `finished` trong [FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx) để cập nhật cục bộ `completionMap` trước khi người dùng nhấn chuyển trang.
+- Đơn giản hóa chính sách RLS SELECT và INSERT của bảng `study_answers` trong [supabase/rls_policies.sql](file:///d:/VIBE/english-flashcard-web/supabase/rls_policies.sql) thành chỉ kiểm tra `auth.uid() = user_id`, loại bỏ các câu subquery lồng nhau không cần thiết để tối ưu hóa hiệu năng và bảo đảm tính tức thời.
+
+### Không được lặp lại
+- Tránh tải lại dữ liệu tiến độ chỉ dựa vào việc chuyển đổi màn hình (state transitions) khi mà quá trình ghi dữ liệu (write operations) trước đó là bất đồng bộ. Hãy chủ động cập nhật/refresh state ngay khi nhận được tín hiệu write thành công.
+- Tránh viết các chính sách RLS lồng nhau (nested subqueries) quá phức tạp cho các bảng có chứa sẵn trường định danh người dùng `user_id`.
+
+---
+
+## Lỗi: Header greeting hiển thị email đầy đủ thay vì tên người dùng hoặc display name thân thiện
+
+### Hiện tượng
+- Lời chào trên Header trang chủ hiển thị full email (ví dụ: "Xin chào, email@gmail.com") mặc dù người dùng đã có display_name hoặc có thể hiển thị phần trước dấu @ sạch sẽ hơn.
+
+### Nguyên nhân
+- UI trực tiếp hiển thị `profile?.display_name || user.email`. Vì tài khoản admin hoặc một số tài khoản cũ có `display_name` trống hoặc đang lưu bằng email đầy đủ, UI bị fallback hiển thị email đầy đủ rất dài và mất thẩm mỹ.
+
+### Cách fix
+- Tạo và xuất helper `getDisplayName(user, profile)` trong [src/context/AuthContext.jsx](file:///d:/VIBE/english-flashcard-web/src/context/AuthContext.jsx) để xử lý fallback thông minh: ưu tiên dùng `display_name` sạch (không chứa kí tự `@`), nếu display_name chứa `@` hoặc trống thì split email trước kí tự `@` để làm tên hiển thị, không bao giờ hiển thị full email trừ khi không còn fallback nào khác.
+- Cập nhật header greeting trong [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx) sử dụng helper `getDisplayName`.
+- Cập nhật handler signup trong [src/components/AuthPanel.jsx](file:///d:/VIBE/english-flashcard-web/src/components/AuthPanel.jsx) và [src/context/AuthContext.jsx](file:///d:/VIBE/english-flashcard-web/src/context/AuthContext.jsx) để tự động gán display name bằng email prefix nếu người dùng bỏ trống mục này lúc đăng ký.
+
+### Không được lặp lại
+- Tránh hiển thị trực tiếp email đầy đủ của người dùng trong các lời chào hoặc badge giao diện. Hãy luôn có bước lọc và fallback email prefix để bảo mật thông tin và tối ưu hóa thẩm mỹ UI.
+
+---
+
 ## Lỗi: Màn chọn chế độ kiểm tra "Ôn tập Từ hay sai" bị ẩn nút "Bắt đầu ôn tập" trên thiết bị di động (mobile)
 
 ### Hiện tượng
@@ -323,3 +382,23 @@ Mỗi khi sửa lỗi xong, phải thêm vào file này.
 - Luôn trim email đầu vào trước khi xác thực.
 - Sử dụng biến trạng thái `isSubmitting` để disable và dừng xử lý form khi đang gửi request.
 - Tuyệt đối không tự ý cập nhật hay reset role của người dùng trong các hàm update client-side.
+
+---
+
+## Lỗi: Vòng lặp đệ quy vô hạn trong chính sách RLS bảng Profiles khiến người dùng đăng nhập bị lỗi tải từ vựng và tiến trình
+
+### Hiện tượng
+- Khi người dùng đăng nhập, trang Web hiển thị thông tin trắc nghiệm nhưng không tải được tiến độ (completionMap) và bảng điều khiển báo lỗi. Trong log console trình duyệt xuất hiện lỗi: `infinite recursion detected in policy for relation "profiles"`.
+
+### Nguyên nhân
+- Chính sách SELECT của bảng `public.profiles` cho Admin (`Allow admins to read all profiles`) thực hiện kiểm tra `EXISTS (SELECT 1 FROM public.profiles WHERE profiles.id = auth.uid() AND profiles.role = 'admin')`.
+- Truy vấn này lại kích hoạt chính sách SELECT của chính nó trên bảng `profiles`, tạo ra vòng lặp đệ quy vô hạn khi người dùng thực hiện truy vấn SELECT trên profiles hoặc bất kì bảng nào có subquery kiểm tra vai trò admin từ profiles (như `vocab_items` RLS).
+
+### Cách fix
+- Định nghĩa hai hàm helper có thuộc tính `SECURITY DEFINER` là `public.is_admin(user_id uuid)` và `public.get_profile_role(user_id uuid)` để truy vấn thông tin trực tiếp từ bảng `profiles` mà không bị áp dụng RLS (vì chạy dưới quyền postgres).
+- Cập nhật các chính sách SELECT và UPDATE của bảng `profiles` sử dụng các hàm helper này để tránh việc tự truy vấn đệ quy bảng `profiles` trong RLS expression.
+- Tạo file migration `supabase/fix_rls_recursion.sql` và cập nhật các schema `supabase/rls_policies.sql` và `supabase/auth_profile_sync_migration.sql` tương ứng.
+
+### Không được lặp lại
+- Tránh viết các câu lệnh SELECT lồng nhau trực tiếp trên cùng một bảng trong phần điều kiện `USING` hoặc `WITH CHECK` của chính sách RLS của bảng đó. Hãy sử dụng các hàm `SECURITY DEFINER` để truy xuất thuộc tính phân quyền nhằm tránh đệ quy vô hạn.
+

@@ -47,7 +47,7 @@ const SAMPLE_HERO_WORDS = [
 ];
 
 export function Home(props) {
-  const { user, profile, isAdmin, signOut } = useAuth();
+  const { user, profile, isAdmin, signOut, getDisplayName } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const {
     cards = [],
@@ -146,7 +146,7 @@ export function Home(props) {
             {user ? (
               <div className="auth-user-info-badge">
                 <User size={16} className="auth-user-icon" />
-                <span className="auth-user-email">Xin chào, <strong>{profile?.display_name || user.email}</strong></span>
+                <span className="auth-user-email">Xin chào, <strong>{getDisplayName(user, profile)}</strong></span>
               </div>
             ) : (
               <span className="auth-user-guest">Bạn chưa đăng nhập</span>
@@ -170,6 +170,9 @@ export function Home(props) {
                 <Settings size={16} /> Quản trị
               </button>
             )}
+            <button className="home-leaderboard-btn" onClick={() => onNavigate("leaderboard")} id="home-leaderboard-btn">
+              <Trophy size={16} /> Xếp hạng
+            </button>
             {user && (
               <button className="home-progress-btn" onClick={onOpenProgress} id="home-progress-btn">
                 <BarChart3 size={16} /> Tiến trình
@@ -212,6 +215,9 @@ export function Home(props) {
                 <Settings size={18} /> Quản trị
               </button>
             )}
+            <button className="mobile-nav-item" onClick={() => { setMobileMenuOpen(false); onNavigate("leaderboard"); }}>
+              <Trophy size={18} /> Bảng xếp hạng
+            </button>
             {user && (
               <button className="mobile-nav-item" onClick={() => { setMobileMenuOpen(false); onOpenProgress(); }}>
                 <BarChart3 size={18} /> Tiến trình học tập
@@ -539,7 +545,7 @@ export function Home(props) {
           <div className="feature-card disabled-card">
             <div className="feature-card-content">
               <div className="feature-icon-wrapper coming-icon">
-                <GraduationCap size={20} />
+                <GraduationCap size={24} />
               </div>
               <span className="badge coming-soon">Sắp ra mắt</span>
               <h3>Grammar Practice</h3>
@@ -547,6 +553,9 @@ export function Home(props) {
                 Học các cấu trúc ngữ pháp thông dụng qua ví dụ thực tế và bài tập điền khuyết.
               </p>
             </div>
+            <button className="feature-button disabled-btn" disabled>
+              Sắp ra mắt
+            </button>
           </div>
 
           <div className="feature-card active-card">
@@ -554,7 +563,7 @@ export function Home(props) {
               <div className="feature-icon-wrapper wrong-words-icon">
                 <XCircle size={24} />
               </div>
-              <span className="badge active">Từ hay sai</span>
+              <span className="badge danger">Từ hay sai</span>
               <h3>Wrong Words</h3>
               <p className="feature-desc">
                 Tổng hợp các từ bạn hay trả lời sai để luyện tập tập trung và cải thiện ghi nhớ.
@@ -565,17 +574,20 @@ export function Home(props) {
             </button>
           </div>
 
-          <div className="feature-card disabled-card">
+          <div className="feature-card active-card">
             <div className="feature-card-content">
-              <div className="feature-icon-wrapper coming-icon">
-                <Trophy size={20} />
+              <div className="feature-icon-wrapper leaderboard-icon">
+                <Trophy size={24} />
               </div>
-              <span className="badge coming-soon">Sắp ra mắt</span>
-              <h3>Daily Challenge</h3>
+              <span className="badge active">Đua Top</span>
+              <h3>Leaderboard</h3>
               <p className="feature-desc">
-                Thử thách hoàn thành 10 câu hỏi vựng mỗi ngày để duy trì thói quen học tập.
+                Xem bảng xếp hạng học tập giữa các thành viên và thi đua nâng cao thứ hạng của bạn.
               </p>
             </div>
+            <button className="feature-button primary" onClick={() => onNavigate("leaderboard")}>
+              Xem xếp hạng
+            </button>
           </div>
         </div>
       </section>

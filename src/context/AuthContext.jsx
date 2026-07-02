@@ -221,12 +221,13 @@ export const AuthProvider = ({ children }) => {
   const signUpWithEmail = async (email, password, displayName) => {
     setLoading(true);
     try {
+      const fallbackName = email ? email.split("@")[0] : "";
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
           data: {
-            display_name: displayName || email
+            display_name: displayName ? displayName.trim() : fallbackName
           }
         }
       });
@@ -252,6 +253,34 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const getDisplayName = (currentUser, currentProfile) => {
+    const isEmail = (str) => str && str.includes("@");
+    
+    if (currentProfile?.display_name) {
+      if (!isEmail(currentProfile.display_name)) {
+        return currentProfile.display_name;
+      }
+      return currentProfile.display_name.split("@")[0];
+    }
+    
+    if (currentUser?.user_metadata?.display_name) {
+      if (!isEmail(currentUser.user_metadata.display_name)) {
+        return currentUser.user_metadata.display_name;
+      }
+      return currentUser.user_metadata.display_name.split("@")[0];
+    }
+    
+    if (currentUser?.email) {
+      return currentUser.email.split("@")[0];
+    }
+    
+    if (currentProfile?.email) {
+      return currentProfile.email.split("@")[0];
+    }
+    
+    return "Người dùng";
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -265,6 +294,7 @@ export const AuthProvider = ({ children }) => {
         signInWithEmail,
         signUpWithEmail,
         signOut,
+        getDisplayName,
       }}
     >
       {children}

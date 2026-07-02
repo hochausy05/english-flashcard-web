@@ -8,6 +8,7 @@ import { ProgressDashboard } from "./components/ProgressDashboard.jsx";
 import { DueReview } from "./components/DueReview.jsx";
 import { WrongWords } from "./components/WrongWords.jsx";
 import AdminVocabularyManager from "./components/AdminVocabularyManager.jsx";
+import { Leaderboard } from "./components/Leaderboard.jsx";
 import { getVocabData } from "./utils/vocabDataService.js";
 import { useAuth } from "./context/AuthContext.jsx";
 
@@ -114,6 +115,9 @@ export default function App() {
       )}
       {currentPage === "wrongWords" && (
         <WrongWords cards={cards} onBackHome={() => setCurrentPage("home")} onOpenAuth={() => setCurrentPage("auth")} />
+      )}
+      {currentPage === "leaderboard" && (
+        <Leaderboard onBackHome={() => setCurrentPage("home")} onOpenAuth={() => setCurrentPage("auth")} />
       )}
       {currentPage === "admin" && (
         (() => {

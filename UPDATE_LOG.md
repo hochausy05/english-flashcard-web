@@ -18,6 +18,104 @@ Mỗi lần Antigravity/AI sửa xong code, phải thêm một mục mới ở t
 ### Ghi chú
 - ...
 ```
+## 2026-07-02 - Phát triển chức năng Bảng xếp hạng từ vựng (Leaderboard) bảo mật giữa các user
+
+### Đã làm
+- **Database SQL RPC**:
+  - Tạo hàm SQL RPC `public.get_vocabulary_leaderboard(limit_count)` giúp tính toán điểm vinh danh giữa các người học.
+  - Hàm tự động tính toán số từ đã học, số buổi hoàn thành đúng 100% (logic giống frontend), tỷ lệ đúng trung bình, và số phiên học.
+  - Điểm xếp hạng tổng hợp được tính theo công thức: `learnedWords * 10 + completedLessons * 50 + accuracy`.
+  - Phân tích an toàn tên hiển thị (`display_name`) bằng cách ẩn email (split email trước ký tự `@`) hoặc hiển thị tên ẩn danh dạng `"Người học #abcd"` dùng 4 ký tự cuối của UUID.
+  - Thắt chặt bảo mật: Loại bỏ hoàn toàn tài khoản có vai trò `admin`, thu hồi quyền truy cập public và chỉ cho phép role `authenticated` thực thi (`GRANT EXECUTE`).
+- **Frontend Service**:
+  - Tạo [leaderboardService.js](file:///d:/VIBE/english-flashcard-web/src/utils/leaderboardService.js) giao tiếp với Supabase RPC, chuẩn hóa dữ liệu, bắt lỗi và hiển thị message thân thiện nếu RPC chưa chạy hoặc lỗi quyền truy cập.
+- **Giao diện Leaderboard**:
+  - Tạo [Leaderboard.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Leaderboard.jsx) với giao diện cao cấp, responsive.
+  - Tách biệt visual cho Top 3 người học dẫn đầu (Gold, Silver, Bronze podium card với gradient nhẹ và icon tương ứng).
+  - Tự động thay đổi giao diện linh hoạt: Dùng bảng biểu chi tiết trên Desktop và Card list trên Mobile để tránh tràn ngang màn hình.
+  - Tích hợp màn hình login gợi ý cho người dùng Guest (chưa đăng nhập).
+  - Bổ sung nút refresh "Làm mới" dữ liệu trực tiếp và chú thích "Admin không tham gia bảng xếp hạng".
+- **Tích hợp hệ thống**:
+  - Khai báo route `"leaderboard"` trong [App.jsx](file:///d:/VIBE/english-flashcard-web/src/App.jsx).
+  - Thêm nút liên kết "Xếp hạng" (icon Trophy) tại Auth Header của [Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx) (desktop & mobile dropdown).
+  - Thay thế card placeholder "Daily Challenge" bằng card "Leaderboard" (Đua Top) hoạt động đầy đủ trên Home.
+- **Tài liệu & Styles**:
+  - Cập nhật styles chi tiết cho podium, responsive tables, loader skeletons, và card mobile trong [styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css).
+  - Cập nhật tài liệu bảo mật [docs/SUPABASE_RLS.md](file:///d:/VIBE/english-flashcard-web/docs/SUPABASE_RLS.md), lỗi bảo trì [BUGS_AND_FIXES.md](file:///d:/VIBE/english-flashcard-web/BUGS_AND_FIXES.md), và giới thiệu [README.md](file:///d:/VIBE/english-flashcard-web/README.md).
+
+### File đã sửa
+- [supabase/leaderboard_migration.sql](file:///d:/VIBE/english-flashcard-web/supabase/leaderboard_migration.sql) [NEW]
+- [src/utils/leaderboardService.js](file:///d:/VIBE/english-flashcard-web/src/utils/leaderboardService.js) [NEW]
+- [src/components/Leaderboard.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Leaderboard.jsx) [NEW]
+- [src/App.jsx](file:///d:/VIBE/english-flashcard-web/src/App.jsx)
+- [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx)
+- [src/styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css)
+- [UPDATE_LOG.md](file:///d:/VIBE/english-flashcard-web/UPDATE_LOG.md)
+- [BUGS_AND_FIXES.md](file:///d:/VIBE/english-flashcard-web/BUGS_AND_FIXES.md)
+- [README.md](file:///d:/VIBE/english-flashcard-web/README.md)
+- [docs/SUPABASE_RLS.md](file:///d:/VIBE/english-flashcard-web/docs/SUPABASE_RLS.md)
+
+### Ghi chú
+- Cần dán và chạy file migration `supabase/leaderboard_migration.sql` trên Supabase dashboard để kích hoạt RPC.
+- Ứng dụng build thành công 100%, bảo đảm không có lỗi runtime và bảo vệ thông tin cá nhân của người học.
+
+## 2026-07-02 - Thiết kế lộ trình học trực quan cho card chọn buổi và sửa lỗi RLS đệ quy vô hạn
+
+### Đã làm
+- **Giao diện lộ trình học trực quan**:
+  - Thiết kế lại danh sách chọn buổi học thành dạng lưới (grid) roadmap đẹp mắt với lớp CSS `.lesson-card`.
+  - Grid tự động căn chỉnh: 3-4 cột trên máy tính, 2 cột trên máy tính bảng, và 1 cột (full-width) trên điện thoại di động.
+  - Card đã hoàn thành: có nền xanh lá nhạt, viền xanh lá đậm, checkmark trắng lớn trong vòng tròn xanh gradient ở trung tâm, hiển thị huy hiệu "Đã hoàn thành".
+  - Card chưa hoàn thành: nền trắng, viền xám/xanh dương nhạt, icon calendar ở trung tâm. Nếu đã thử luyện tập thì hiển thị nhãn "Chưa hoàn thành" kèm tỉ lệ đúng tốt nhất (ví dụ: "Tốt nhất 83%"). Nếu chưa học thì hiện "Chưa luyện tập".
+  - Giữ nguyên trạng thái chọn (selected) độc lập với trạng thái hoàn thành: card vừa được chọn vừa hoàn thành sẽ có viền xanh dương đậm nổi bật mà vẫn giữ tích xanh hoàn thành bên trong.
+- **Khắc phục lỗi RLS đệ quy vô hạn**:
+  - Phát hiện và sửa lỗi đệ quy vô hạn (`infinite recursion detected in policy for relation "profiles"`) khi người dùng đăng nhập truy cập bảng `vocab_items` thông qua kiểm tra quyền admin.
+  - Tạo hai hàm helper `public.is_admin(user_id uuid)` và `public.get_profile_role(user_id uuid)` với thuộc tính `SECURITY DEFINER` để truy xuất an toàn dữ liệu từ bảng `profiles` mà không bị lặp đệ quy.
+  - Tạo file script [supabase/fix_rls_recursion.sql](file:///d:/VIBE/english-flashcard-web/supabase/fix_rls_recursion.sql).
+  - Cập nhật các chính sách RLS trong [supabase/rls_policies.sql](file:///d:/VIBE/english-flashcard-web/supabase/rls_policies.sql) and [supabase/auth_profile_sync_migration.sql](file:///d:/VIBE/english-flashcard-web/supabase/auth_profile_sync_migration.sql).
+- **Tải lại trạng thái (Refresh completionMap)**:
+  - Tích hợp thêm bước refresh lại `completionMap` sau khi hoàn thành lượt Luyện nghe trong [ListeningPractice.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ListeningPractice.jsx) giống như Vocabulary Quiz.
+- **Đồng bộ hóa lưới chọn buổi**:
+  - Cập nhật lưới chọn buổi của [VocabularyReview.jsx](file:///d:/VIBE/english-flashcard-web/src/components/VocabularyReview.jsx) sang kiểu `.lesson-card` mới để thống nhất trải nghiệm visual trên toàn bộ ứng dụng.
+
+### File đã sửa
+- [supabase/fix_rls_recursion.sql](file:///d:/VIBE/english-flashcard-web/supabase/fix_rls_recursion.sql) [NEW]
+- [supabase/rls_policies.sql](file:///d:/VIBE/english-flashcard-web/supabase/rls_policies.sql)
+- [supabase/auth_profile_sync_migration.sql](file:///d:/VIBE/english-flashcard-web/supabase/auth_profile_sync_migration.sql)
+- [src/styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css)
+- [src/components/FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx)
+- [src/components/ListeningPractice.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ListeningPractice.jsx)
+- [src/components/VocabularyReview.jsx](file:///d:/VIBE/english-flashcard-web/src/components/VocabularyReview.jsx)
+- [BUGS_AND_FIXES.md](file:///d:/VIBE/english-flashcard-web/BUGS_AND_FIXES.md)
+
+### Ghi chú
+- Dự án đã được build production thành công và chạy ổn định.
+- Cần chạy file `supabase/fix_rls_recursion.sql` trong SQL Editor của Supabase để áp dụng bản vá lỗi đệ quy.
+
+## 2026-07-02 - Sửa lỗi tích xanh tiến trình, hiển thị tên header và đồng bộ hóa UI học tập
+
+### Đã làm
+- **Sửa dấu tích xanh hoàn thành**: Tải lại `completionMap` trực tiếp khi lưu kết quả session thành công trong [FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx) giúp cập nhật ngay lập tức dấu tích xanh mà không cần tải lại trang.
+- **Đơn giản hóa chính sách RLS**: Đơn giản hóa RLS SELECT và INSERT trên `study_answers` trong [supabase/rls_policies.sql](file:///d:/VIBE/english-flashcard-web/supabase/rls_policies.sql) chỉ kiểm tra `auth.uid() = user_id`, loại bỏ các câu subquery `EXISTS` phức tạp để tránh race condition và cải thiện hiệu năng.
+- **Header hiển thị tên**:
+  - Tạo helper `getDisplayName` trong [src/context/AuthContext.jsx](file:///d:/VIBE/english-flashcard-web/src/context/AuthContext.jsx) để xác định tên hiển thị thân thiện (display name, hoặc phần trước `@` của email) thay vì hiển thị email đầy đủ trong lời chào.
+  - Cập nhật header trong [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx) để hiển thị tên thân thiện này.
+  - Cập nhật luồng đăng ký trong [src/components/AuthPanel.jsx](file:///d:/VIBE/english-flashcard-web/src/components/AuthPanel.jsx) và [src/context/AuthContext.jsx](file:///d:/VIBE/english-flashcard-web/src/context/AuthContext.jsx) để tự động gán `display_name` bằng phần trước `@` của email làm fallback sạch sẽ.
+- **Đồng bộ hóa UI học tập**:
+  - Cập nhật cấu trúc của Grammar Practice và Daily Challenge disabled cards trong [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx) để thêm placeholder button disabled, chỉnh kích thước icon thành 24 cho đồng bộ với các active card.
+  - Thêm CSS cho `.badge.danger` (dùng cho card Từ hay sai) và `.feature-button.disabled-btn` (cho các nút card bị khoá) trong [src/styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css).
+  - Tối ưu hóa `.feature-card.disabled-card` trong [src/styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css) để bỏ `pointer-events: none`, cho phép hiển thị đúng cursor `not-allowed` khi hover.
+
+### File đã sửa
+- [supabase/rls_policies.sql](file:///d:/VIBE/english-flashcard-web/supabase/rls_policies.sql)
+- [src/context/AuthContext.jsx](file:///d:/VIBE/english-flashcard-web/src/context/AuthContext.jsx)
+- [src/components/AuthPanel.jsx](file:///d:/VIBE/english-flashcard-web/src/components/AuthPanel.jsx)
+- [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx)
+- [src/components/FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx)
+- [src/styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css)
+
+### Ghi chú
+- Đã chạy build production thành công và toàn bộ app hoạt động mượt mà.
 
 ## 2026-07-02 - Sửa triệt để luồng Auth, đồng bộ hóa Email và thắt chặt chính sách RLS/GRANT cho Profiles
 
