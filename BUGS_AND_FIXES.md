@@ -286,3 +286,40 @@ Mỗi khi sửa lỗi xong, phải thêm vào file này.
 ### Không được lặp lại
 
 * Không đổi tên cột CSV nếu không sửa toàn bộ logic load dữ liệu.
+
+---
+
+## Lỗi: Đồng bộ email người dùng từ auth.users sang public.profiles bị lỗi hoặc email mang giá trị NULL, lỗi rate limit 429 và login 400 trong AuthPanel
+
+### Hiện tượng
+- Khi đăng ký, email trong bảng `public.profiles` của một số tài khoản bị NULL hoặc không đồng bộ đúng.
+- Đôi khi khi đăng ký/đăng nhập, giao diện báo lỗi chung chung, không rõ lỗi Rate Limit (429) hoặc sai thông tin đăng nhập/chưa xác nhận email (400).
+- Xảy ra race condition / double submit do click nhiều lần liên tục vào nút đăng nhập/đăng ký.
+
+### Nguyên nhân
+- Trigger `handle_new_user()` trước đó chỉ insert và update không triệt để trường `email` từ `auth.users`, dẫn đến việc bị NULL.
+- Client-side `AuthContext.jsx` khi đăng nhập chưa fetch hoặc sync triệt để trường `email` của profile và không có fallback hiển thị displayName chính xác.
+- `AuthPanel.jsx` không bắt chính xác mã lỗi `400` và `429` của Supabase và chưa chặn click đúp khi đang submit.
+
+### Cách fix
+- Sửa hàm trigger `public.handle_new_user` luôn insert `NEW.email` và `ON CONFLICT (id) DO UPDATE` cập nhật `email = EXCLUDED.email`.
+- Thêm query backfill để sửa toàn bộ email bị NULL/thiếu của `public.profiles` cũ từ `auth.users.email`.
+- Tạo mới file migration `supabase/auth_profile_sync_migration.sql` cấu hình đầy đủ RLS cho `profiles`:
+  - `authenticated` được `SELECT` và `INSERT` profile chính mình (với role `user`).
+  - `authenticated` được `UPDATE` email, display_name và updated_at của chính mình nhưng không được tự đổi role.
+  - Cung cấp quyền `GRANT SELECT, INSERT, UPDATE` cho `authenticated` role.
+- Sửa `AuthPanel.jsx`:
+  - Gọi trực tiếp `supabase.auth.signUp(...)` và `supabase.auth.signInWithPassword(...)`.
+  - Trim email trước khi gửi đi.
+  - Kiểm tra trạng thái `isSubmitting` trước khi thực thi để chống spam click đúp.
+  - Nhận diện lỗi status `429` (rate limit) hiển thị: `"Bạn thao tác quá nhanh. Vui lòng chờ vài phút rồi thử lại."`
+  - Nhận diện lỗi status `400` hiển thị: `"Email hoặc mật khẩu không đúng, hoặc tài khoản chưa được xác nhận."`
+- Sửa `AuthContext.jsx`:
+  - `fetchUserProfile` fetch profile và sync `email` (update nếu NULL hoặc khác `user.email`).
+  - Tạo profile mới: `display_name = user.user_metadata?.display_name || user.email`.
+  - Không bao giờ ghi đè hoặc reset `role` admin thành `user`.
+
+### Không được lặp lại
+- Luôn trim email đầu vào trước khi xác thực.
+- Sử dụng biến trạng thái `isSubmitting` để disable và dừng xử lý form khi đang gửi request.
+- Tuyệt đối không tự ý cập nhật hay reset role của người dùng trong các hàm update client-side.

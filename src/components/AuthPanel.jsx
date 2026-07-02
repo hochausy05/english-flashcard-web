@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { supabase } from "../lib/supabaseClient";
 import { Mail, Lock, LogIn, UserPlus, ArrowLeft, AlertCircle, Sparkles, User } from "lucide-react";
 
 export function AuthPanel({ onBackHome }) {
@@ -20,6 +21,8 @@ export function AuthPanel({ onBackHome }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting) return;
+
     const trimmedEmail = email.trim();
     if (!trimmedEmail || !password) {
       setMessage({ type: "error", text: "Vui lòng nhập đầy đủ email và mật khẩu." });
@@ -35,21 +38,41 @@ export function AuthPanel({ onBackHome }) {
 
     try {
       if (mode === "signin") {
-        const { error } = await signInWithEmail(trimmedEmail, password);
+        const { error } = await supabase.auth.signInWithPassword({
+          email: trimmedEmail,
+          password
+        });
         if (error) {
-          setMessage({
-            type: "error",
-            text: error.message === "Invalid login credentials"
-              ? "Email hoặc mật khẩu không chính xác."
-              : error.message
-          });
+          let errMsg = error.message;
+          const status = error.status;
+          if (status === 429 || errMsg?.includes("429") || errMsg?.toLowerCase().includes("rate limit")) {
+            errMsg = "Bạn thao tác quá nhanh. Vui lòng chờ vài phút rồi thử lại.";
+          } else if (status === 400 || errMsg?.includes("400") || errMsg?.toLowerCase().includes("invalid login") || errMsg?.toLowerCase().includes("not confirmed") || errMsg?.toLowerCase().includes("invalid credentials")) {
+            errMsg = "Email hoặc mật khẩu không đúng, hoặc tài khoản chưa được xác nhận.";
+          }
+          setMessage({ type: "error", text: errMsg });
         } else {
           setMessage({ type: "success", text: "Đăng nhập thành công! Đang chuyển hướng..." });
         }
       } else {
-        const { data, error } = await signUpWithEmail(trimmedEmail, password, displayName);
+        const { data, error } = await supabase.auth.signUp({
+          email: trimmedEmail,
+          password,
+          options: {
+            data: {
+              display_name: displayName || trimmedEmail
+            }
+          }
+        });
         if (error) {
-          setMessage({ type: "error", text: error.message });
+          let errMsg = error.message;
+          const status = error.status;
+          if (status === 429 || errMsg?.includes("429") || errMsg?.toLowerCase().includes("rate limit")) {
+            errMsg = "Bạn thao tác quá nhanh. Vui lòng chờ vài phút rồi thử lại.";
+          } else if (status === 400 || errMsg?.includes("400")) {
+            errMsg = "Email hoặc mật khẩu không đúng, hoặc tài khoản chưa được xác nhận.";
+          }
+          setMessage({ type: "error", text: errMsg });
         } else {
           if (data?.session) {
             setMessage({ type: "success", text: "Tạo tài khoản và đăng nhập thành công!" });

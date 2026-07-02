@@ -19,6 +19,33 @@ Mỗi lần Antigravity/AI sửa xong code, phải thêm một mục mới ở t
 - ...
 ```
 
+## 2026-07-02 - Sửa triệt để luồng Auth, đồng bộ hóa Email và thắt chặt chính sách RLS/GRANT cho Profiles
+
+### Đã làm
+- **Đồng bộ hóa email**: Sửa trigger function `public.handle_new_user` và backfill query để luôn đồng bộ email từ `auth.users.email` sang `public.profiles.email`.
+- **Cấu hình RLS & GRANT cho Profiles**:
+  - Cho phép người dùng authenticated tự SELECT và INSERT profile của chính mình với `role = 'user'`.
+  - Cho phép người dùng authenticated tự UPDATE `email`, `display_name`, và `updated_at` của mình nhưng không được tự ý sửa `role`.
+  - Cấp quyền `GRANT SELECT, INSERT, UPDATE` trên bảng `public.profiles` cho authenticated role.
+- **Cải tiến AuthPanel**:
+  - Đăng ký và Đăng nhập gọi trực tiếp API `supabase.auth.signUp` và `supabase.auth.signInWithPassword`.
+  - Sử dụng biến `isSubmitting` để chặn double click/double submit.
+  - Trim email trước khi gửi request.
+  - Phân loại lỗi và hiển thị rõ ràng thông điệp: lỗi 429 (Bạn thao tác quá nhanh. Vui lòng chờ vài phút rồi thử lại.) và lỗi 400 (Email hoặc mật khẩu không đúng, hoặc tài khoản chưa được xác nhận.).
+- **Cải tiến AuthContext**:
+  - fetchProfile đồng bộ email của user sang profile nếu email của profile bị NULL hoặc khác biệt.
+  - Không bao giờ ghi đè hay reset `role` admin thành `user`.
+
+### File đã sửa
+- [supabase/auth_profile_sync_migration.sql](file:///d:/VIBE/english-flashcard-web/supabase/auth_profile_sync_migration.sql) [NEW]
+- [supabase/admin_vocab_migration.sql](file:///d:/VIBE/english-flashcard-web/supabase/admin_vocab_migration.sql)
+- [src/components/AuthPanel.jsx](file:///d:/VIBE/english-flashcard-web/src/components/AuthPanel.jsx)
+- [src/context/AuthContext.jsx](file:///d:/VIBE/english-flashcard-web/src/context/AuthContext.jsx)
+- [BUGS_AND_FIXES.md](file:///d:/VIBE/english-flashcard-web/BUGS_AND_FIXES.md)
+
+### Ghi chú
+- Build production chạy thành công bằng `npm run build` không có lỗi.
+
 ## 2026-07-02 - Nâng cấp tính năng Từ hay sai và trải nghiệm tự động chuyển câu Quiz
 
 ### Đã làm

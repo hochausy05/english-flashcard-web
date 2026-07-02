@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }) => {
           const newProfile = {
             id: currentUser.id,
             email: currentUser.email,
-            display_name: metadataDisplayName || null,
+            display_name: metadataDisplayName || currentUser.email,
             role: "user"
           };
 
@@ -221,17 +221,14 @@ export const AuthProvider = ({ children }) => {
   const signUpWithEmail = async (email, password, displayName) => {
     setLoading(true);
     try {
-      const options = {};
-      if (displayName && displayName.trim()) {
-        options.data = {
-          display_name: displayName.trim()
-        };
-      }
-
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options
+        options: {
+          data: {
+            display_name: displayName || email
+          }
+        }
       });
       if (error) throw error;
       return { data, error: null };
