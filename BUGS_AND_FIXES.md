@@ -22,6 +22,40 @@ Mỗi khi sửa lỗi xong, phải thêm vào file này.
 - ...
 ```
 
+## Lỗi: Màn chọn chế độ kiểm tra "Ôn tập Từ hay sai" bị ẩn nút "Bắt đầu ôn tập" trên thiết bị di động (mobile)
+
+### Hiện tượng
+- Người dùng truy cập màn "Ôn tập Từ hay sai" trên mobile, chọn kiểu kiểm tra xong nhưng không tìm thấy nút hành động để bắt đầu học.
+
+### Nguyên nhân
+- Trong `styles.css`, lớp `.selection-screen .action-box` bị thiết lập `display: none !important` trên mobile (max-width: 768px). Do màn "Ôn tập Từ hay sai" không có phần chọn ngày học và không sử dụng `.mobile-sticky-action-bar` giống màn Quiz chính, nút bắt đầu nằm trong `.action-box` bị ẩn hoàn toàn.
+
+### Cách fix
+- Thêm lớp `wrong-words-selection-screen` riêng cho container của Wrong Words và thêm CSS ghi đè `@media (max-width: 768px)` để giữ `.action-box` luôn hiển thị dưới dạng full-width, chiều cao tối thiểu 48px cho nút CTA bấm dễ dàng.
+
+### Không được lặp lại
+- Tránh ẩn các hộp hành động `.action-box` của màn hình chọn chế độ trên di động mà không cung cấp thanh hành động sticky thay thế ở cuối trang.
+
+---
+
+## Lỗi: Nhãn đáp án A/B/C/D bị đè/overlap lên nội dung đáp án trắc nghiệm trên thiết bị di động (mobile)
+
+### Hiện tượng
+- Trong các bài kiểm tra trắc nghiệm, các chữ cái A/B/C/D nằm đè lên văn bản của đáp án, làm che chữ hoặc vỡ bố cục khi xem trên mobile.
+
+### Nguyên nhân
+- Lớp `.option-label` được thiết lập `position: absolute; left: 16px; top: 50%; transform: translateY(-50%)` và `.option` có `padding-left: 64px` trên desktop. Khi ở trên mobile (max-width: 768px), `.option` bị reset padding về `12px 14px` nhưng nhãn `.option-label` vẫn giữ absolute positioning khiến nó bị kéo vào đè lên chữ đáp án.
+
+### Cách fix
+- Chuyển đổi `.option` thành bố cục Flexbox hoàn toàn (`display: flex; align-items: center; gap: 12px; padding: 16px 20px;`) và loại bỏ thuộc tính absolute positioning của `.option-label`.
+- Thiết lập `.option-label` có thuộc tính `flex: 0 0 32px;` và `.option-text` có `flex: 1; min-width: 0; word-break: break-word` để text đáp án tự động xuống dòng đẹp mắt khi quá dài mà không bao giờ va chạm với nhãn chữ cái.
+- Đồng bộ lớp CSS này trên cả 4 màn trắc nghiệm (Flashcard Quiz, Due Review, Wrong Words, Listening Practice).
+
+### Không được lặp lại
+- Tuyệt đối không dùng absolute positioning cho nhãn đáp án A/B/C/D. Hãy luôn dùng Flexbox với thuộc tính `flex-shrink` hoặc fixed flex-basis cho nhãn và `min-width: 0` cho phần text để đảm bảo tính responsive tự nhiên.
+
+---
+
 ## Lỗi: Profile của Admin bị ghi đè thành role user hoặc bị reset isAdmin do fallback local khi fetch profiles gặp lỗi hoặc khi dùng cache cũ
 
 ### Hiện tượng

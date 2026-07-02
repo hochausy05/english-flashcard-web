@@ -17,6 +17,7 @@ export default function App() {
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState("home");
   const [initialCourse, setInitialCourse] = useState("foundation");
+  const [initialLesson, setInitialLesson] = useState(null);
   const { user, profile, isAdmin, loading: authLoading } = useAuth();
 
   // Load vocabulary data (Supabase preferred, fallback to CSV)
@@ -55,8 +56,9 @@ export default function App() {
           user={user}
           profile={profile}
           isAdmin={isAdmin}
-          onOpenFlashcard={(course) => {
+          onOpenFlashcard={(course, lesson) => {
             if (course) setInitialCourse(course);
+            setInitialLesson(lesson || null);
             setCurrentPage("flashcard");
           }}
           onOpenVocabularyReview={(course) => {
@@ -75,7 +77,15 @@ export default function App() {
         />
       )}
       {currentPage === "flashcard" && (
-        <FlashcardQuiz cards={cards} onBackHome={() => setCurrentPage("home")} initialCourse={initialCourse} />
+        <FlashcardQuiz 
+          cards={cards} 
+          onBackHome={() => {
+            setInitialLesson(null);
+            setCurrentPage("home");
+          }} 
+          initialCourse={initialCourse} 
+          initialLesson={initialLesson} 
+        />
       )}
       {currentPage === "vocabularyReview" && (
         <VocabularyReview cards={cards} onBackHome={() => setCurrentPage("home")} initialCourse={initialCourse} />
@@ -90,8 +100,9 @@ export default function App() {
         <ProgressDashboard
           onBackHome={() => setCurrentPage("home")}
           onOpenAuth={() => setCurrentPage("auth")}
-          onOpenFlashcard={(course) => {
+          onOpenFlashcard={(course, lesson) => {
             if (course) setInitialCourse(course);
+            setInitialLesson(lesson || null);
             setCurrentPage("flashcard");
           }}
           onOpenDueReview={() => setCurrentPage("dueReview")}

@@ -79,6 +79,15 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
   const [typedAnswer, setTypedAnswer] = useState("");
   const [isAnsweredState, setIsAnsweredState] = useState(false);
   const inputRef = useRef(null);
+  const autoNextTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+      }
+    };
+  }, []);
 
   const toggleSound = () => {
     setSoundEnabled((prev) => {
@@ -118,6 +127,8 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
           audio: dbVocab.audio || csvCard.audio || "",
           vocab_item_id: dbVocab.id,
           wrongCount: item.wrong_count || 0,
+          wrong_review_correct_streak: item.wrong_review_correct_streak || 0,
+          last_wrong_reviewed_at: item.last_wrong_reviewed_at || null,
           lastReviewedAt: item.last_reviewed_at
         };
       }).filter(item => item.word && item.answer);
@@ -168,6 +179,20 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
     return Number(raw.toFixed(1));
   }, [correctCount, questionQueue]);
 
+  const clearedWordsCount = useMemo(() => {
+    let count = 0;
+    answersLog.forEach(log => {
+      const q = questionQueue.find(item => item.id === log.id);
+      if (q && log.isCorrect) {
+        const initialStreak = q.wrong_review_correct_streak || 0;
+        if (initialStreak + 1 >= 3) {
+          count++;
+        }
+      }
+    });
+    return count;
+  }, [answersLog, questionQueue]);
+
   // Save study result when finished
   useEffect(() => {
     if (quizStatus === "finished") {
@@ -182,7 +207,7 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
           user,
           courseCode,
           selectedDays: [...new Set(questionQueue.map(q => q.day))],
-          mode: quizMode, // "multipleChoice" or "typing"
+          mode: "wrong_words", // Identify session as wrong words review
           totalQuestions: questionQueue.length,
           correctCount: correctCount,
           wrongCount: questionQueue.length - correctCount,
@@ -193,6 +218,7 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
         if (res.success) {
           setSaveStatus("success");
           setSaveErrorMsg("");
+          loadWrongWords(); // Reload list to update local state immediately
         } else {
           setSaveStatus("error");
           setSaveErrorMsg(res.error?.message || "Lỗi không xác định");
@@ -205,22 +231,29 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
       setSaveStatus("idle");
       setSaveErrorMsg("");
     }
-  }, [quizStatus, user, questionQueue, correctCount, score10, answersLog, quizMode]);
+  }, [quizStatus, user, questionQueue, correctCount, score10, answersLog]);
 
   function handleStartReviewSelecting() {
     setQuizStatus("selecting_mode");
   }
 
   function handleStartReviewGameplay() {
-    if (wrongWordsList.length === 0) return;
+    if (wrongWordsList.length < 3) return;
+
+    // Limit to top 20 wrong words
+    const wordsToReview = wrongWordsList.slice(0, 20);
 
     // Shuffle wrong cards
-    const shuffled = shuffle(wrongWordsList);
+    const shuffled = shuffle(wordsToReview);
 
-    // Create options for multiple choice
+    // Create options for multiple choice using the subset
     const queue = shuffled.map((card) => {
-      return createQuestion(card, wrongWordsList, cards);
+      return createQuestion(card, wordsToReview, cards);
     });
+
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
 
     setQuestionQueue(queue);
     setCurrentIndex(0);
@@ -245,6 +278,7 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
       ...prev,
       {
         id: currentQuestion.id,
+        vocab_item_id: currentQuestion.vocab_item_id, // Pass Supabase primary key
         word: currentQuestion.word,
         correctAnswer: currentQuestion.answer,
         selectedAnswer: option,
@@ -256,6 +290,16 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
         mode: "multipleChoice",
       },
     ]);
+
+    // Auto next on correct
+    if (isCorrect) {
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+      }
+      autoNextTimerRef.current = setTimeout(() => {
+        handleNext();
+      }, 900); // AUTO_NEXT_DELAY_MS = 900
+    }
   }
 
   function handleCheckAnswer() {
@@ -276,6 +320,7 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
       ...prev,
       {
         id: currentQuestion.id,
+        vocab_item_id: currentQuestion.vocab_item_id, // Pass Supabase primary key
         word: currentQuestion.word,
         pos: currentQuestion.pos,
         answer: currentQuestion.answer,
@@ -291,6 +336,9 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
   }
 
   function handleNext() {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
     if (currentIndex + 1 >= questionQueue.length) {
       setQuizStatus("finished");
     } else {
@@ -302,6 +350,9 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
   }
 
   function handleBack() {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
     if (quizStatus === "selecting_mode" || quizStatus === "playing") {
       if (quizStatus === "playing") {
         if (!confirm("Bạn có chắc muốn dừng ôn tập và quay lại danh sách không?")) {
@@ -383,21 +434,33 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
           </p>
           
           {wrongWordsList.length > 0 && (
-            <div style={{ marginTop: "16px", display: "flex", gap: "12px", justifyContent: "center" }}>
-              <button
-                className="cta-button primary"
-                onClick={handleStartReviewSelecting}
-                style={{ background: "linear-gradient(135deg, #f04438, #d93025)", minHeight: "44px" }}
-              >
-                <Play size={18} fill="white" /> Ôn lại ngay ({wrongWordsList.length} từ)
-              </button>
-              <button
-                className="progress-refresh-btn"
-                onClick={loadWrongWords}
-                title="Làm mới dữ liệu"
-              >
-                <RefreshCw size={16} /> Làm mới
-              </button>
+            <div style={{ marginTop: "16px", display: "flex", gap: "12px", justifyContent: "center", alignItems: "center", flexDirection: "column" }}>
+              <div style={{ display: "flex", gap: "12px" }}>
+                <button
+                  className="cta-button primary"
+                  onClick={handleStartReviewSelecting}
+                  disabled={wrongWordsList.length < 3}
+                  style={{
+                    background: wrongWordsList.length < 3 ? "#98a2b3" : "linear-gradient(135deg, #f04438, #d93025)",
+                    cursor: wrongWordsList.length < 3 ? "not-allowed" : "pointer",
+                    minHeight: "44px"
+                  }}
+                >
+                  <Play size={18} fill="white" /> Ôn lại ngay ({wrongWordsList.length} từ)
+                </button>
+                <button
+                  className="progress-refresh-btn"
+                  onClick={loadWrongWords}
+                  title="Làm mới dữ liệu"
+                >
+                  <RefreshCw size={16} /> Làm mới
+                </button>
+              </div>
+              {wrongWordsList.length < 3 && (
+                <p style={{ color: "#d97706", fontSize: "13px", marginTop: "8px", fontWeight: "500", textAlign: "center" }}>
+                  ⚠️ Bạn cần ít nhất 3 từ sai để bắt đầu ôn tập. Hãy học thêm hoặc quay lại sau.
+                </p>
+              )}
             </div>
           )}
         </section>
@@ -407,9 +470,9 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
             <div className="progress-empty-icon" style={{ background: "rgba(18, 183, 106, 0.08)", color: "#12b76a" }}>
               <CheckCircle2 size={48} />
             </div>
-            <h3>Chưa có từ sai nào!</h3>
+            <h3>Tuyệt vời! Bạn đã xử lý hết các từ hay sai 🎉</h3>
             <p style={{ maxWidth: "420px", margin: "0 auto 24px" }}>
-              Tuyệt vời! Bạn chưa trả lời sai từ nào trong các bài kiểm tra gần đây hoặc chưa làm bài. Hãy học thêm nhé!
+              Bạn không còn từ sai nào cần ôn tập. Hãy tiếp tục học thêm từ mới để nâng cao vốn từ nhé!
             </p>
             <button className="primary-button" onClick={onBackHome}>
               Học ngay
@@ -427,9 +490,14 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
                         {item.pos ? `${item.pos} · ${item.ipa}` : item.ipa}
                       </span>
                     </div>
-                    <span className="badge" style={{ background: "rgba(240, 68, 56, 0.08)", color: "#b42318", border: "1px solid rgba(240, 68, 56, 0.2)" }}>
-                      Sai {item.wrongCount} lần
-                    </span>
+                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                      <span className="badge" style={{ background: "rgba(240, 68, 56, 0.08)", color: "#b42318", border: "1px solid rgba(240, 68, 56, 0.2)", fontSize: "11px" }}>
+                        Sai {item.wrongCount} lần
+                      </span>
+                      <span className="badge" style={{ background: "rgba(53, 184, 224, 0.08)", color: "#0c8599", border: "1px solid rgba(53, 184, 224, 0.2)", fontSize: "11px" }}>
+                        Đúng liên tục: {item.wrong_review_correct_streak || 0}/3
+                      </span>
+                    </div>
                   </div>
                   <div className="vocab-card-answer" style={{ fontWeight: "700", color: "#101828", fontSize: "16px", marginTop: "4px" }}>
                     {item.answer}
@@ -472,7 +540,7 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
           </button>
         </nav>
 
-        <section className="selection-screen card">
+        <section className="selection-screen wrong-words-selection-screen card">
           <div className="screen-header">
             <XCircle className="header-icon" size={32} style={{ color: "#f04438" }} />
             <h2>Ôn tập Từ hay sai</h2>
@@ -508,14 +576,23 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
             </div>
           </div>
 
-          <div className="action-box">
+          <div className="action-box" style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "8px" }}>
             <button
               className="primary-button start-button"
               onClick={handleStartReviewGameplay}
-              style={{ background: "linear-gradient(135deg, #f04438, #d93025)" }}
+              disabled={wrongWordsList.length < 3}
+              style={{
+                background: wrongWordsList.length < 3 ? "#98a2b3" : "linear-gradient(135deg, #f04438, #d93025)",
+                cursor: wrongWordsList.length < 3 ? "not-allowed" : "pointer"
+              }}
             >
               <Play size={18} fill="white" /> Bắt đầu ôn tập
             </button>
+            {wrongWordsList.length < 3 && (
+              <p style={{ color: "#d97706", fontSize: "13px", marginTop: "8px", fontWeight: "500", textAlign: "center" }}>
+                ⚠️ Bạn cần ít nhất 3 từ sai để bắt đầu ôn tập.
+              </p>
+            )}
           </div>
         </section>
       </div>
@@ -600,9 +677,10 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
               <p className="example">“{currentQuestion.example || "Chưa có câu ví dụ."}”</p>
 
               <div className="options">
-                {currentQuestion.options.map((option) => {
+                {currentQuestion.options.map((option, idx) => {
                   const isThisCorrect = option === currentQuestion.answer;
                   const isThisSelected = option === selectedAnswer;
+                  const labelLetter = ["A", "B", "C", "D"][idx] || "";
 
                   let className = "option";
                   if (isAnswered && isThisCorrect) className += " correct";
@@ -615,9 +693,10 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
                       onClick={() => handleSelect(option)}
                       disabled={isAnswered}
                     >
-                      <span>{option}</span>
-                      {isAnswered && isThisCorrect && <CheckCircle2 size={20} />}
-                      {isAnswered && isThisSelected && !isThisCorrect && <XCircle size={20} />}
+                      <span className="option-label">{labelLetter}</span>
+                      <span className="option-text">{option}</span>
+                      {isAnswered && isThisCorrect && <CheckCircle2 size={20} className="option-status-icon" />}
+                      {isAnswered && isThisSelected && !isThisCorrect && <XCircle size={20} className="option-status-icon" />}
                     </button>
                   );
                 })}
@@ -628,9 +707,27 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
                   <p className={isCorrect ? "result correct-text" : "result wrong-text"}>
                     {isCorrect ? "Chính xác." : `Sai rồi. Đáp án đúng là: ${currentQuestion.answer}`}
                   </p>
-                  <button className="primary-button" onClick={handleNext}>
-                    {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
-                  </button>
+                  
+                  <p style={{ fontSize: "14px", color: isCorrect ? "#027a48" : "#b42318", marginTop: "6px", marginBottom: "6px", fontWeight: "600", textAlign: "center" }}>
+                    {isCorrect ? (
+                      (() => {
+                        const newStreak = (currentQuestion.wrong_review_correct_streak || 0) + 1;
+                        if (newStreak >= 3) {
+                          return "🎉 Tuyệt vời! Bạn đã trả lời đúng 3 lần liên tục. Từ này sẽ được bỏ khỏi danh sách từ sai.";
+                        } else {
+                          return `Tiến trình: Đúng liên tục ${newStreak}/3`;
+                        }
+                      })()
+                    ) : (
+                      "Chuỗi đúng của từ này đã được đặt lại (0/3)"
+                    )}
+                  </p>
+
+                  {!isCorrect && (
+                    <button className="primary-button" onClick={handleNext}>
+                      {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Tiếp tục"}
+                    </button>
+                  )}
                 </div>
               )}
             </>
@@ -697,6 +794,21 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
                      )}
                   </div>
 
+                  <p style={{ fontSize: "14px", color: isCorrect ? "#027a48" : "#b42318", marginTop: "8px", marginBottom: "8px", fontWeight: "600", textAlign: "center" }}>
+                    {isCorrect ? (
+                      (() => {
+                        const newStreak = (currentQuestion.wrong_review_correct_streak || 0) + 1;
+                        if (newStreak >= 3) {
+                          return "🎉 Tuyệt vời! Bạn đã trả lời đúng 3 lần liên tục. Từ này sẽ được bỏ khỏi danh sách từ sai.";
+                        } else {
+                          return `Tiến trình: Đúng liên tục ${newStreak}/3`;
+                        }
+                      })()
+                    ) : (
+                      "Chuỗi đúng của từ này đã được đặt lại (0/3)"
+                    )}
+                  </p>
+
                   <div className="correct-word-details">
                     <span className="label">Từ tiếng Anh đúng:</span>
                     <div className="correct-word-row">
@@ -722,7 +834,7 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
 
                   <div className="feedback-actions">
                     <button className="primary-button next-btn" onClick={handleNext}>
-                      {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
+                      {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Tiếp tục"}
                     </button>
                   </div>
                 </div>
@@ -752,6 +864,22 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
               <span className="score-num">{score10}</span>
               <span className="score-total">/ 10 điểm</span>
             </div>
+            {clearedWordsCount > 0 && (
+              <div className="cleared-summary-banner" style={{
+                background: "rgba(18, 183, 106, 0.08)",
+                border: "1px solid rgba(18, 183, 106, 0.2)",
+                color: "#027a48",
+                padding: "12px 16px",
+                borderRadius: "10px",
+                fontWeight: "700",
+                fontSize: "14px",
+                textAlign: "center",
+                margin: "12px auto 0",
+                maxWidth: "400px"
+              }}>
+                🎉 Đã loại {clearedWordsCount} từ khỏi danh sách từ sai
+              </div>
+            )}
             <div className={`save-status-msg ${saveStatus}`}>
               {saveStatus === "saving" && "Đang lưu kết quả..."}
               {saveStatus === "success" && "Đã lưu kết quả học tập thành công."}

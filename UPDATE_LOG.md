@@ -19,6 +19,105 @@ Mỗi lần Antigravity/AI sửa xong code, phải thêm một mục mới ở t
 - ...
 ```
 
+## 2026-07-02 - Nâng cấp tính năng Từ hay sai và trải nghiệm tự động chuyển câu Quiz
+
+### Đã làm
+* **Từ hay sai (Wrong Words) nâng cao**:
+  - Hỗ trợ loại bỏ các từ sai đã đạt chuỗi đúng liên tục 3 lần (`wrong_review_correct_streak >= 3` hoặc `cleared_from_wrong_words_at IS NOT NULL`).
+  - Sắp xếp thứ tự ưu tiên ôn tập từ sai trong [wrongWordsService.js](file:///d:/VIBE/english-flashcard-web/src/utils/wrongWordsService.js): `wrong_count` giảm dần, `last_wrong_at` mới nhất lên trước, và `wrong_review_correct_streak` thấp nhất lên trước.
+  - Cập nhật streak hồi phục trong [studyResultService.js](file:///d:/VIBE/english-flashcard-web/src/utils/studyResultService.js): tăng streak khi làm đúng ở mode `wrong_words` (đạt 3/3 sẽ set ngày hoàn thành); reset streak về 0 nếu làm sai hoặc làm sai ở bất kỳ bài quiz/typing/listening chuẩn nào để từ quay lại danh sách.
+  - Cập nhật [continueStudyService.js](file:///d:/VIBE/english-flashcard-web/src/utils/continueStudyService.js) để chỉ gợi ý ôn tập từ sai khi có ít nhất 3 từ sai hợp lệ.
+* **Giao diện & Gameplay Wrong Words**:
+  - Hiển thị huy hiệu tiến trình phục hồi từ sai (ví dụ `Đúng liên tục: 1/3`).
+  - Hiển thị thông báo empty state mới và nút học ngay khi hết từ sai.
+  - Disable nút ôn tập và hiển thị dòng cảnh báo `Bạn cần ít nhất 3 từ sai để bắt đầu ôn tập. Hãy học thêm hoặc quay lại sau.` nếu tổng số từ sai dưới 3.
+  - Giới hạn tối đa 20 từ sai ưu tiên nhất cho mỗi lượt ôn tập.
+  - Hiển thị banner tổng kết số từ đã được loại bỏ khỏi danh sách từ sai ở màn hình kết quả session.
+* **Trải nghiệm Quiz Auto-Next**:
+  - Tích hợp tính năng tự động chuyển câu sau `900ms` khi trả lời đúng ở các bài trắc nghiệm ([FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx), [WrongWords.jsx](file:///d:/VIBE/english-flashcard-web/src/components/WrongWords.jsx), [DueReview.jsx](file:///d:/VIBE/english-flashcard-web/src/components/DueReview.jsx), và [ListeningPractice.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ListeningPractice.jsx)).
+  - Hủy hiển thị nút "Câu tiếp theo" thủ công đối với câu trả lời đúng.
+  - Yêu cầu người dùng bấm "Tiếp tục" thủ công khi trả lời sai (không tự chuyển câu).
+  - Ngăn chặn double-click / double-save bằng cách khóa các nút đáp án trong thời gian chuyển câu.
+  - Đảm bảo dọn dẹp (clear) timer khi unmount component hoặc chuyển câu để tránh rò rỉ bộ nhớ.
+* **Tài liệu SQL migration**:
+  - Tạo script migration [wrong_words_streak_migration.sql](file:///d:/VIBE/english-flashcard-web/supabase/wrong_words_streak_migration.sql) để thêm các cột lưu trữ streak và lịch sử sai.
+
+### File đã sửa
+* [supabase/wrong_words_streak_migration.sql](file:///d:/VIBE/english-flashcard-web/supabase/wrong_words_streak_migration.sql) [NEW]
+* [src/utils/wrongWordsService.js](file:///d:/VIBE/english-flashcard-web/src/utils/wrongWordsService.js)
+* [src/utils/studyResultService.js](file:///d:/VIBE/english-flashcard-web/src/utils/studyResultService.js)
+* [src/utils/continueStudyService.js](file:///d:/VIBE/english-flashcard-web/src/utils/continueStudyService.js)
+* [src/components/WrongWords.jsx](file:///d:/VIBE/english-flashcard-web/src/components/WrongWords.jsx)
+* [src/components/FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx)
+* [src/components/DueReview.jsx](file:///d:/VIBE/english-flashcard-web/src/components/DueReview.jsx)
+* [src/components/ListeningPractice.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ListeningPractice.jsx)
+
+### Ghi chú
+* Đã chạy build thành công, toàn bộ dự án hoạt động ổn định và mượt mà.
+
+## 2026-07-02 - Phát triển tính năng "Tiếp tục học" và tích hợp đề xuất "Học hôm nay"
+
+### Đã làm
+* **Service Đề xuất học tập**: Tạo mới service [continueStudyService.js](file:///d:/VIBE/english-flashcard-web/src/utils/continueStudyService.js) để tổng hợp tiến độ học tập và đề xuất hoạt động phù hợp nhất hôm nay theo thứ tự ưu tiên:
+  1. Nếu có từ đến lịch ôn tập Spaced Repetition hôm nay -> Đề xuất ôn hôm nay (điều hướng sang `DueReview`).
+  2. Nếu có từ hay trả lời sai -> Đề xuất ôn tập từ sai (điều hướng sang `WrongWords`).
+  3. Nếu không có hai mục trên -> Đề xuất buổi học chưa hoàn thành 100% đầu tiên trong khóa học đang học (hoặc chuyển tiếp khóa tiếp theo).
+* **Card Đề xuất trên Trang chủ (Home)**: Tích hợp card "Học hôm nay" / "Tiếp tục học" ở đầu trang chủ (sau stats section) hiển thị thông tin lộ trình, progress bar phần trăm hoàn thành khóa học thực tế.
+* **Giao diện Guest (Chưa đăng nhập)**: Hiển thị card đề xuất nhẹ nhàng với dòng ghi chú "💡 Đăng nhập để lưu và tiếp tục lộ trình học tập của riêng bạn.", gợi ý bắt đầu từ Nền tảng - Buổi 1, không crash app và đảm bảo Guest học bình thường.
+* **Luồng điều hướng Học tiếp**: Bổ sung hỗ trợ prop `initialLesson` trong [FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx) và đồng bộ hóa state trong [App.jsx](file:///d:/VIBE/english-flashcard-web/src/App.jsx) để khi bấm "Học tiếp" hoặc click vào gợi ý, hệ thống tự động chọn đúng khóa học và buổi học được gợi ý mà không làm phá vỡ logic chọn buổi thủ công.
+* **Responsive CSS**: Thiết kế responsive mobile cho card đề xuất, bảo đảm không bị tràn ngang, bố cục co giãn hợp lý trên các màn hình nhỏ.
+
+### File đã sửa
+* [src/utils/continueStudyService.js](file:///d:/VIBE/english-flashcard-web/src/utils/continueStudyService.js) [NEW]
+* [src/App.jsx](file:///d:/VIBE/english-flashcard-web/src/App.jsx)
+* [src/components/FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx)
+* [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx)
+* [src/styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css)
+
+### Ghi chú
+* Đã chạy build production thành công và chạy ổn định.
+* Trạng thái và tính năng tích xanh hoàn thành bài học 100% không bị ảnh hưởng.
+
+## 2026-07-02 - Nâng cấp màn chọn buổi học hiển thị trạng thái hoàn thành (tích xanh)
+
+### Đã làm
+* **Lesson Progress Service**: Tạo service mới [lessonProgressService.js](file:///d:/VIBE/english-flashcard-web/src/utils/lessonProgressService.js) để truy vấn dữ liệu từ Supabase (`lessons`, `vocab_items`, `study_sessions`, `study_answers`) và tính toán bản đồ hoàn thành (completion status) cho từng buổi học (lesson) của user đang đăng nhập.
+* **Tiêu chí hoàn thành 100%**: Chỉ đánh dấu hoàn thành (tích xanh) nếu user trả lời đúng 100% toàn bộ từ vựng đang hoạt động của lesson trong cùng một phiên học (`study_session`) và không làm sai câu nào.
+* **Trạng thái Đã thử (Partial Progress)**: Nếu user chưa hoàn thành 100% nhưng đã thử học, hiển thị subtitle "Đã thử (Tốt nhất X%)" thể hiện phần trăm độ chính xác cao nhất đạt được qua các phiên học.
+* **Tải động trạng thái**: Tự động tải/cập nhật bản đồ hoàn thành trên màn hình chọn buổi học của cả [FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx) và [ListeningPractice.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ListeningPractice.jsx) mỗi khi thay đổi user, khóa học, hoặc khi kết thúc quiz và quay lại màn chọn buổi học.
+* **Giao diện Guest (Chưa đăng nhập)**: Ẩn tích xanh và trạng thái hoàn thành trên cloud. Thêm note nhỏ tinh tế: "💡 Đăng nhập để lưu tiến độ hoàn thành và đồng bộ kết quả học tập." để thu hút người dùng đăng nhập mà không làm hỏng trải nghiệm học tập của Guest.
+* **Kiểu dáng card**: Bổ sung css cho các class `.guest-note`, `.day-card.completed`, `.day-completed-badge`, và `.day-partial-text` ở cuối file [styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css) tạo hiệu ứng gradient xanh nhẹ hiện đại cho card đã hoàn thành.
+
+### File đã sửa
+* [src/utils/lessonProgressService.js](file:///d:/VIBE/english-flashcard-web/src/utils/lessonProgressService.js) [NEW]
+* [src/components/FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx)
+* [src/components/ListeningPractice.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ListeningPractice.jsx)
+* [src/styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css)
+
+### Ghi chú
+* Đã chạy build production thành công và chạy ổn định.
+
+## 2026-07-02 - Đồng bộ giao diện Quiz, tối ưu hóa Hero Flashcard và rút gọn Progress Dashboard
+
+### Đã làm
+* **Wrong Words Screen**: Sửa lỗi giao diện trên mobile, thêm lớp `wrong-words-selection-screen` và điều chỉnh CSS để nút "Bắt đầu ôn tập" hiển thị rõ ràng, full-width (cao 48px) thay vì bị ẩn.
+* **Quiz A/B/C/D Option Grid**: Đồng bộ nhãn A/B/C/D cho các đáp án trắc nghiệm ở Flashcard Quiz, Due Review, Wrong Words, và Listening Practice. Chuyển đổi `.option` từ định vị tuyệt đối (absolute positioning) sang bố cục Flexbox (`display: flex; gap: 12px;`) để tránh hoàn toàn hiện tượng chữ đè lên nhau trên mobile. Bổ sung các class bí danh (alias) `.answer-option`, `.answer-letter`, `.answer-text`.
+* **Đồng bộ Chế độ học tập**: Thay thế các nút CTA màu xanh lá ở Vocabulary Review và Wrong Words thành nút màu xanh dương đậm `.feature-button.primary` chuẩn của hệ thống. Loại bỏ inline style trên icon vựng và áp dụng màu nền nhạt soft-colors trong CSS.
+* **Cách học hiệu quả**: Thiết kế lại 3 bước cách học thành một learning flow rõ ràng, hiển thị số thứ tự, Lucide icon, tiêu đề và dòng kết quả cụ thể ("Biết hôm nay cần học gì", v.v.). Thêm đường nối dashed nhẹ trên màn hình máy tính.
+* **Hero Flashcard sinh động**: Thiết kế danh sách 5 từ vựng mẫu cục bộ và thiết lập timer tự động xoay vòng sau mỗi 4 giây kèm hiệu ứng chuyển đổi mượt mà (fade/scale/slide-up). Tự động tắt hoạt ảnh nếu hệ thống người dùng kích hoạt `prefers-reduced-motion`. Thu nhỏ kích thước card trên thiết bị di động (dưới 480px).
+* **Rút gọn Progress Dashboard**: Chỉ hiển thị 4 chỉ số cốt lõi (Phiên học, Từ đã học, Điểm TB /10, Tỷ lệ đúng). Các chỉ số chi tiết khác được lược bỏ khỏi grid chính. Thay đổi cấu trúc lưới hiển thị (4 cột trên desktop, 2 cột trên tablet và 1 cột trên mobile).
+
+### File đã sửa
+* [src/components/WrongWords.jsx](file:///d:/VIBE/english-flashcard-web/src/components/WrongWords.jsx)
+* [src/components/DueReview.jsx](file:///d:/VIBE/english-flashcard-web/src/components/DueReview.jsx)
+* [src/components/ListeningPractice.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ListeningPractice.jsx)
+* [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx)
+* [src/components/ProgressDashboard.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ProgressDashboard.jsx)
+* [src/styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css)
+
+### Ghi chú
+* Đã build thành công và chạy ổn định.
+
 ## 2026-07-02 - Nâng cấp toàn diện UI/UX, tối ưu responsive và cải tiến Admin panel
 
 ### Đã làm

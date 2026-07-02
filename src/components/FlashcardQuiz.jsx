@@ -5,6 +5,7 @@ import { speakWord } from "../utils/speech.js";
 import { playFeedbackSound } from "../utils/feedbackSound.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { saveStudyResultToSupabase } from "../utils/studyResultService.js";
+import { fetchLessonCompletionMap } from "../utils/lessonProgressService.js";
 
 
 // Hàm helper để xáo trộn mảng dùng Fisher-Yates
@@ -39,11 +40,11 @@ function maskWordInExample(example, word) {
   return masked;
 }
 
-export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
+export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson }) {
   const { user } = useAuth();
   const [quizStatus, setQuizStatus] = useState("selecting"); // "selecting" | "playing" | "finished"
   const [selectedCourse, setSelectedCourse] = useState(initialCourse || "foundation");
-  const [selectedDays, setSelectedDays] = useState([]);
+  const [selectedDays, setSelectedDays] = useState(initialLesson ? [String(initialLesson)] : []);
   const [questionQueue, setQuestionQueue] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answersLog, setAnswersLog] = useState([]);
@@ -51,6 +52,9 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
   const [saveStatus, setSaveStatus] = useState("idle"); // "idle" | "saving" | "success" | "error" | "not_logged_in"
   const [saveErrorMsg, setSaveErrorMsg] = useState("");
   const hasSavedRef = useRef(false);
+
+  const [completionMap, setCompletionMap] = useState({});
+  const [loadingCompletion, setLoadingCompletion] = useState(false);
 
   const [isDaysExpanded, setIsDaysExpanded] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(() => {
@@ -62,6 +66,15 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
   const [typedAnswer, setTypedAnswer] = useState("");
   const [isAnsweredState, setIsAnsweredState] = useState(false);
   const inputRef = useRef(null);
+  const autoNextTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+      }
+    };
+  }, []);
 
   const toggleSound = () => {
     setSoundEnabled((prev) => {
@@ -70,6 +83,18 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
       return next;
     });
   };
+
+  // Đồng bộ props initialCourse và initialLesson khi đổi
+  useEffect(() => {
+    if (initialCourse) {
+      setSelectedCourse(initialCourse);
+    }
+    if (initialLesson) {
+      setSelectedDays([String(initialLesson)]);
+    } else {
+      setSelectedDays([]);
+    }
+  }, [initialCourse, initialLesson]);
 
   // Tự động focus vào ô input khi chuyển sang câu mới ở chế độ gõ
   useEffect(() => {
@@ -81,6 +106,38 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
       }, 50);
     }
   }, [currentIndex, quizStatus, quizMode]);
+
+  // Tải trạng thái hoàn thành các buổi học từ Supabase
+  useEffect(() => {
+    if (!user) {
+      setCompletionMap({});
+      return;
+    }
+
+    let isMounted = true;
+    async function loadCompletion() {
+      if (quizStatus === "selecting") {
+        setLoadingCompletion(true);
+        try {
+          const map = await fetchLessonCompletionMap(user.id, selectedCourse);
+          if (isMounted) {
+            setCompletionMap(map);
+          }
+        } catch (err) {
+          console.error("Failed to load lesson completion map:", err);
+        } finally {
+          if (isMounted) {
+            setLoadingCompletion(false);
+          }
+        }
+      }
+    }
+
+    loadCompletion();
+    return () => {
+      isMounted = false;
+    };
+  }, [user, selectedCourse, quizStatus]);
 
 
   // Gom nhóm các từ vựng theo buổi học (day) thuộc course đang chọn để hiển thị ở màn chọn buổi
@@ -219,8 +276,12 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
 
     // Tạo queue câu hỏi, tính toán trước 4 phương án cho mỗi câu để tránh shuffle lại khi render
     const queue = shuffledSession.map((card) => {
-      return createQuestion(card, sessionCards, cards);
+      return createQuestion(card, shuffledSession, cards);
     });
+
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
 
     setQuestionQueue(queue);
     setCurrentIndex(0);
@@ -247,6 +308,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
       ...prev,
       {
         id: currentQuestion.id,
+        vocab_item_id: currentQuestion.vocab_item_id, // Pass Supabase primary key
         word: currentQuestion.word,
         correctAnswer: currentQuestion.answer,
         selectedAnswer: option,
@@ -258,6 +320,16 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
         mode: "multipleChoice",
       },
     ]);
+
+    // Auto next on correct
+    if (isCorrect) {
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+      }
+      autoNextTimerRef.current = setTimeout(() => {
+        handleNext();
+      }, 900); // AUTO_NEXT_DELAY_MS = 900
+    }
   }
 
   // Kiểm tra đáp án nhập (Chế độ gõ)
@@ -280,6 +352,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
       ...prev,
       {
         id: currentQuestion.id,
+        vocab_item_id: currentQuestion.vocab_item_id, // Pass Supabase primary key
         word: currentQuestion.word,
         pos: currentQuestion.pos,
         answer: currentQuestion.answer,
@@ -296,6 +369,9 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
 
   // Chuyển câu hỏi hoặc kết thúc
   function handleNext() {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
     if (currentIndex + 1 >= questionQueue.length) {
       setQuizStatus("finished");
     } else {
@@ -308,6 +384,9 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
 
   // Nút quay lại của từng màn hình
   function handleBack() {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
     if (quizStatus === "playing") {
       if (confirm("Bạn có chắc muốn dừng bài học và quay lại màn chọn buổi không?")) {
         setQuizStatus("selecting");
@@ -348,6 +427,11 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
             <p className="subtitle">
               Chọn một hoặc nhiều buổi học bằng checkbox để bắt đầu ôn luyện. Hệ thống sẽ trộn câu hỏi từ các buổi đã chọn.
             </p>
+            {!user && (
+              <p className="guest-note">
+                💡 Đăng nhập để lưu tiến độ hoàn thành và đồng bộ kết quả học tập.
+              </p>
+            )}
           </div>
 
           <div className={`days-selector-container ${showCollapsed ? "mobile-collapsed" : ""}`}>
@@ -412,10 +496,18 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
               <div className="days-grid">
                 {daysInfo.map((info) => {
                   const isSelected = selectedDays.includes(info.day);
+                  const completion = completionMap[info.day];
+                  const isCompleted = completion?.isCompleted;
+                  const bestAccuracy = completion?.bestAccuracy || 0;
+
+                  let cardClassName = "day-card";
+                  if (isSelected) cardClassName += " selected";
+                  if (isCompleted) cardClassName += " completed";
+
                   return (
                     <div
                       key={info.day}
-                      className={`day-card ${isSelected ? "selected" : ""}`}
+                      className={cardClassName}
                       onClick={() => handleToggleDay(info.day)}
                     >
                       <div className="day-card-left">
@@ -428,9 +520,23 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
                         <div className="day-info">
                           <span className="day-title">Buổi {info.day}</span>
                           <span className="day-count">{info.count} từ vựng</span>
+                          {!isCompleted && bestAccuracy > 0 && (
+                            <span className="day-partial-text">
+                              Đã thử (Tốt nhất {bestAccuracy}%)
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <Calendar className="day-card-icon" size={20} />
+                      <div className="day-card-right">
+                        {isCompleted ? (
+                          <div className="day-completed-badge" title="Đã hoàn thành 100%">
+                            <CheckCircle2 size={16} className="completed-icon" />
+                            <span className="completed-text">Hoàn thành</span>
+                          </div>
+                        ) : (
+                          <Calendar className="day-card-icon" size={20} />
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -605,9 +711,11 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse }) {
                   <p className={isCorrect ? "result correct-text" : "result wrong-text"}>
                     {isCorrect ? "Chính xác." : `Sai rồi. Đáp án đúng là: ${currentQuestion.answer}`}
                   </p>
-                  <button className="primary-button" onClick={handleNext}>
-                    {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
-                  </button>
+                  {!isCorrect && (
+                    <button className="primary-button" onClick={handleNext}>
+                      {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
+                    </button>
+                  )}
                 </div>
               )}
             </>

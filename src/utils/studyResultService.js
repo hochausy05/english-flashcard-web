@@ -53,6 +53,8 @@ export async function saveStudyResultToSupabase({
     mappedMode = "typing";
   } else if (mode === "listening") {
     mappedMode = "listening";
+  } else if (mode === "wrong_words" || mode === "wrong_review") {
+    mappedMode = mode;
   } else {
     // Handling fallback mode safely, no crash
     mappedMode = "multiple_choice";
@@ -199,12 +201,14 @@ export async function saveStudyResultToSupabase({
       const progressUpdates = [];
 
       answersLog.forEach((item, index) => {
-        let vocabItemId = null;
-        if (item.id) {
-          vocabItemId = vocabMap[`id_${item.id}`];
-        }
-        if (!vocabItemId && item.word) {
-          vocabItemId = vocabMap[`word_${item.word.toLowerCase().trim()}`];
+        let vocabItemId = item.vocab_item_id || item.vocabItemId || null;
+        if (!vocabItemId) {
+          if (item.id) {
+            vocabItemId = vocabMap[`id_${item.id}`];
+          }
+          if (!vocabItemId && item.word) {
+            vocabItemId = vocabMap[`word_${item.word.toLowerCase().trim()}`];
+          }
         }
 
         if (!vocabItemId) return;
@@ -308,6 +312,35 @@ export async function saveStudyResultToSupabase({
             nextReviewDate.setDate(nextReviewDate.getDate() + 14);
           }
 
+          // Recovery Progress columns for Wrong Words review
+          let wrongReviewCorrectStreak = existing?.wrong_review_correct_streak || 0;
+          let clearedFromWrongWordsAt = existing?.cleared_from_wrong_words_at || null;
+          let lastWrongReviewedAt = existing?.last_wrong_reviewed_at || null;
+          let lastWrongAt = existing?.last_wrong_at || null;
+
+          const isWrongWordsSession = (mappedMode === "wrong_words" || mappedMode === "wrong_review");
+
+          if (isWrongWordsSession) {
+            lastWrongReviewedAt = nowStr;
+            if (update.isCorrect) {
+              wrongReviewCorrectStreak += 1;
+              if (wrongReviewCorrectStreak >= 3) {
+                clearedFromWrongWordsAt = nowStr;
+              }
+            } else {
+              wrongReviewCorrectStreak = 0;
+              clearedFromWrongWordsAt = null;
+              lastWrongAt = nowStr;
+            }
+          } else {
+            // In standard quiz sessions, wrong answers put the word back into the wrong words list
+            if (!update.isCorrect) {
+              wrongReviewCorrectStreak = 0;
+              clearedFromWrongWordsAt = null;
+              lastWrongAt = nowStr;
+            }
+          }
+
           const rowToUpsert = {
             user_id: user.id,
             vocab_item_id: update.vocabItemId,
@@ -317,7 +350,11 @@ export async function saveStudyResultToSupabase({
             mastery_level: masteryLevel,
             is_mastered: isMastered,
             last_reviewed_at: nowStr,
-            next_review_at: nextReviewDate.toISOString()
+            next_review_at: nextReviewDate.toISOString(),
+            wrong_review_correct_streak: wrongReviewCorrectStreak,
+            last_wrong_reviewed_at: lastWrongReviewedAt,
+            cleared_from_wrong_words_at: clearedFromWrongWordsAt,
+            last_wrong_at: lastWrongAt
           };
 
           if (existing?.id) {

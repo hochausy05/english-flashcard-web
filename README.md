@@ -1,13 +1,16 @@
 # English Flashcard Web
 
-Web flashcard học tiếng Anh đơn giản:
+Hệ thống Web học từ vựng tiếng Anh thông minh tích hợp Supabase backend:
 
-- Dữ liệu lấy từ file CSV.
-- Mỗi câu hiển thị 1 từ tiếng Anh.
-- Có 1 đáp án đúng và 3 đáp án sai random từ kho nghĩa.
-- Có phiên âm IPA, câu ví dụ.
-- Nút loa dùng Web Speech API để đọc từ tiếng Anh.
-- Nếu cột `audio` có link mp3, app sẽ ưu tiên phát file audio đó.
+- **Học hôm nay / Tiếp tục học**: Tự động gợi ý lộ trình học tập cá nhân hóa dựa trên lịch ôn Spaced Repetition, danh sách từ hay trả lời sai, và buổi học chưa hoàn thành tiếp theo.
+- **Flashcard Quiz**: Học từ vựng trắc nghiệm phản xạ hoặc gõ từ tiếng Anh theo từng buổi học chống lặp câu hỏi.
+- **Listening Practice**: Luyện nghe phát âm từ vựng và chọn đáp án trắc nghiệm hoặc nhập từ để kiểm tra.
+- **Vocabulary Review**: Xem lại từ vựng, tìm kiếm realtime, lọc theo loại từ (n, v, adj, adv) và nghe phát âm.
+- **Progress Dashboard**: Thống kê số phiên học, số từ đã học, tỷ lệ chính xác trung bình và lịch sử phiên học.
+- **Wrong Words & Due Review**: Chuyên trang ôn luyện tập trung các từ hay trả lời sai và ôn tập Spaced Repetition đến lịch.
+- **Tích xanh hoàn thành**: Chỉ đánh dấu tích xanh hoàn thành buổi học nếu trả lời đúng 100% không làm sai câu nào trong phiên.
+- **Quản trị viên (Admin Panel)**: Giao diện quản lý thêm, sửa, xóa mềm từ vựng và import/preview tệp CSV dữ liệu trực quan.
+- **Đồng bộ hóa Cloud**: Lưu trữ dữ liệu từ vựng, phiên học và đồng bộ tiến độ học tập qua Supabase. Hỗ trợ Guest học offline fallback CSV.
 
 ## Cài đặt
 

@@ -62,6 +62,15 @@ export function DueReview({ cards, onBackHome }) {
   const [typedAnswer, setTypedAnswer] = useState("");
   const [isAnsweredState, setIsAnsweredState] = useState(false);
   const inputRef = useRef(null);
+  const autoNextTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+      }
+    };
+  }, []);
 
   const toggleSound = () => {
     setSoundEnabled((prev) => {
@@ -200,6 +209,10 @@ export function DueReview({ cards, onBackHome }) {
       return createQuestion(card, dueWordsList, cards);
     });
 
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
+
     setQuestionQueue(queue);
     setCurrentIndex(0);
     setAnswersLog([]);
@@ -223,6 +236,7 @@ export function DueReview({ cards, onBackHome }) {
       ...prev,
       {
         id: currentQuestion.id,
+        vocab_item_id: currentQuestion.vocab_item_id, // Pass Supabase primary key
         word: currentQuestion.word,
         correctAnswer: currentQuestion.answer,
         selectedAnswer: option,
@@ -234,6 +248,16 @@ export function DueReview({ cards, onBackHome }) {
         mode: "multipleChoice",
       },
     ]);
+
+    // Auto next on correct
+    if (isCorrect) {
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+      }
+      autoNextTimerRef.current = setTimeout(() => {
+        handleNext();
+      }, 900); // AUTO_NEXT_DELAY_MS = 900
+    }
   }
 
   function handleCheckAnswer() {
@@ -254,6 +278,7 @@ export function DueReview({ cards, onBackHome }) {
       ...prev,
       {
         id: currentQuestion.id,
+        vocab_item_id: currentQuestion.vocab_item_id, // Pass Supabase primary key
         word: currentQuestion.word,
         pos: currentQuestion.pos,
         answer: currentQuestion.answer,
@@ -269,6 +294,9 @@ export function DueReview({ cards, onBackHome }) {
   }
 
   function handleNext() {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
     if (currentIndex + 1 >= questionQueue.length) {
       setQuizStatus("finished");
     } else {
@@ -280,6 +308,9 @@ export function DueReview({ cards, onBackHome }) {
   }
 
   function handleBack() {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
     if (quizStatus === "playing") {
       if (confirm("Bạn có chắc muốn dừng ôn tập và quay lại không?")) {
         setQuizStatus("selecting");
@@ -496,9 +527,10 @@ export function DueReview({ cards, onBackHome }) {
               <p className="example">“{currentQuestion.example || "Chưa có câu ví dụ."}”</p>
 
               <div className="options">
-                {currentQuestion.options.map((option) => {
+                {currentQuestion.options.map((option, idx) => {
                   const isThisCorrect = option === currentQuestion.answer;
                   const isThisSelected = option === selectedAnswer;
+                  const labelLetter = ["A", "B", "C", "D"][idx] || "";
 
                   let className = "option";
                   if (isAnswered && isThisCorrect) className += " correct";
@@ -511,9 +543,10 @@ export function DueReview({ cards, onBackHome }) {
                       onClick={() => handleSelect(option)}
                       disabled={isAnswered}
                     >
-                      <span>{option}</span>
-                      {isAnswered && isThisCorrect && <CheckCircle2 size={20} />}
-                      {isAnswered && isThisSelected && !isThisCorrect && <XCircle size={20} />}
+                      <span className="option-label">{labelLetter}</span>
+                      <span className="option-text">{option}</span>
+                      {isAnswered && isThisCorrect && <CheckCircle2 size={20} className="option-status-icon" />}
+                      {isAnswered && isThisSelected && !isThisCorrect && <XCircle size={20} className="option-status-icon" />}
                     </button>
                   );
                 })}
@@ -524,9 +557,11 @@ export function DueReview({ cards, onBackHome }) {
                   <p className={isCorrect ? "result correct-text" : "result wrong-text"}>
                     {isCorrect ? "Chính xác." : `Sai rồi. Đáp án đúng là: ${currentQuestion.answer}`}
                   </p>
-                  <button className="primary-button" onClick={handleNext}>
-                    {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
-                  </button>
+                  {!isCorrect && (
+                    <button className="primary-button" onClick={handleNext}>
+                      {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
+                    </button>
+                  )}
                 </div>
               )}
             </>

@@ -260,34 +260,14 @@ export function ProgressDashboard({ onBackHome, onOpenAuth, onOpenFlashcard, onO
               <span className="progress-stat-label">Phiên học</span>
             </div>
 
-            <div className="progress-stat-card" id="stat-total-questions">
-              <div className="progress-stat-icon questions-icon">
-                <Target size={22} />
+            <div className="progress-stat-card" id="stat-words-learned">
+              <div className="progress-stat-icon learned-icon">
+                <Brain size={22} />
               </div>
               <span className="progress-stat-number">
-                {sessionStats.totalQuestions || 0}
+                {wordStats.wordsLearned || 0}
               </span>
-              <span className="progress-stat-label">Câu đã làm</span>
-            </div>
-
-            <div className="progress-stat-card" id="stat-total-correct">
-              <div className="progress-stat-icon correct-icon">
-                <CheckCircle2 size={22} />
-              </div>
-              <span className="progress-stat-number">
-                {sessionStats.totalCorrect || 0}
-              </span>
-              <span className="progress-stat-label">Câu đúng</span>
-            </div>
-
-            <div className="progress-stat-card" id="stat-accuracy">
-              <div className="progress-stat-icon accuracy-icon">
-                <Zap size={22} />
-              </div>
-              <span className="progress-stat-number">
-                {sessionStats.averageAccuracy || 0}%
-              </span>
-              <span className="progress-stat-label">Tỷ lệ đúng</span>
+              <span className="progress-stat-label">Từ đã học</span>
             </div>
 
             <div className="progress-stat-card" id="stat-average-score">
@@ -300,34 +280,14 @@ export function ProgressDashboard({ onBackHome, onOpenAuth, onOpenFlashcard, onO
               <span className="progress-stat-label">Điểm TB /10</span>
             </div>
 
-            <div className="progress-stat-card" id="stat-words-learned">
-              <div className="progress-stat-icon learned-icon">
-                <Brain size={22} />
+            <div className="progress-stat-card" id="stat-accuracy">
+              <div className="progress-stat-icon accuracy-icon">
+                <Zap size={22} />
               </div>
               <span className="progress-stat-number">
-                {wordStats.wordsLearned || 0}
+                {sessionStats.averageAccuracy || 0}%
               </span>
-              <span className="progress-stat-label">Từ đã học</span>
-            </div>
-
-            <div className="progress-stat-card" id="stat-words-mastered">
-              <div className="progress-stat-icon mastered-icon">
-                <Trophy size={22} />
-              </div>
-              <span className="progress-stat-number">
-                {wordStats.wordsMastered || 0}
-              </span>
-              <span className="progress-stat-label">Từ thành thạo</span>
-            </div>
-
-            <div className="progress-stat-card" id="stat-words-review">
-              <div className="progress-stat-icon review-icon" style={{ background: "rgba(217, 119, 6, 0.08)", color: "#d97706" }}>
-                <CalendarClock size={22} />
-              </div>
-              <span className="progress-stat-number">
-                {wordStats.wordsToReviewToday || 0}
-              </span>
-              <span className="progress-stat-label">Cần ôn hôm nay</span>
+              <span className="progress-stat-label">Tỷ lệ đúng</span>
             </div>
           </section>
 

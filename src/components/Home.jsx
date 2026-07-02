@@ -1,7 +1,50 @@
-import { useMemo, useState } from "react";
-import { BookOpen, Headphones, GraduationCap, XCircle, Trophy, BookCheck, ArrowRight, Sparkles, Compass, User, LogOut, LogIn, BarChart3, Settings, Menu, X } from "lucide-react";
+import { useMemo, useState, useEffect } from "react";
+import { BookOpen, Headphones, GraduationCap, XCircle, Trophy, BookCheck, ArrowRight, Sparkles, Compass, User, LogOut, LogIn, BarChart3, Settings, Menu, X, RefreshCw } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
+import { getStudyRecommendation } from "../utils/continueStudyService.js";
 
+const SAMPLE_HERO_WORDS = [
+  {
+    word: "Afford",
+    ipa: "/əˈfɔːd/",
+    pos: "verb",
+    answer: "Có đủ khả năng chi trả (tiền bạc, thời gian)",
+    example: "We can't afford to buy a new car.",
+    label: "TOEIC 1 · Buổi 1"
+  },
+  {
+    word: "Require",
+    ipa: "/rɪˈkwaɪə(r)/",
+    pos: "verb",
+    answer: "Yêu cầu, đòi hỏi",
+    example: "These rules require everyone to register.",
+    label: "Nền tảng · Buổi 2"
+  },
+  {
+    word: "Promise",
+    ipa: "/ˈprɒmɪs/",
+    pos: "verb / noun",
+    answer: "Hứa hẹn, lời hứa",
+    example: "He promised to help me with my homework.",
+    label: "TOEIC 1 · Buổi 3"
+  },
+  {
+    word: "Protect",
+    ipa: "/prəˈtekt/",
+    pos: "verb",
+    answer: "Bảo vệ, che chở",
+    example: "You should wear sunglasses to protect your eyes.",
+    label: "Nền tảng · Buổi 4"
+  },
+  {
+    word: "Compare",
+    ipa: "/kəmˈpeə(r)/",
+    pos: "verb",
+    answer: "So sánh, đối chiếu",
+    example: "It is difficult to compare these two products.",
+    label: "TOEIC 1 · Buổi 5"
+  }
+];
 
 export function Home(props) {
   const { user, profile, isAdmin, signOut } = useAuth();
@@ -14,8 +57,57 @@ export function Home(props) {
     onOpenAuth,
     onOpenProgress,
     onOpenWrongWords,
-    onOpenAdmin
+    onOpenAdmin,
+    onNavigate
   } = props;
+
+  // Hero card rotation
+  const [currentWordIdx, setCurrentWordIdx] = useState(0);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [recommendation, setRecommendation] = useState(null);
+  const [loadingRec, setLoadingRec] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    async function fetchRec() {
+      setLoadingRec(true);
+      try {
+        const rec = await getStudyRecommendation(user ? user.id : null, cards);
+        if (isMounted) {
+          setRecommendation(rec);
+        }
+      } catch (err) {
+        console.error("Failed to load today study recommendation:", err);
+      } finally {
+        if (isMounted) {
+          setLoadingRec(false);
+        }
+      }
+    }
+    fetchRec();
+    return () => {
+      isMounted = false;
+    };
+  }, [user, cards]);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+    if (mediaQuery.matches) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setIsTransitioning(true);
+      setTimeout(() => {
+        setCurrentWordIdx((prevIdx) => (prevIdx + 1) % SAMPLE_HERO_WORDS.length);
+        setIsTransitioning(false);
+      }, 300);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const currentHeroWord = SAMPLE_HERO_WORDS[currentWordIdx];
 
   // 1. Calculate dynamic statistics
   const stats = useMemo(() => {
@@ -168,16 +260,16 @@ export function Home(props) {
           <div className="mock-card-stack">
             <div className="mock-card card-3"></div>
             <div className="mock-card card-2"></div>
-            <div className="mock-card card-1">
+            <div className={`mock-card card-1 ${isTransitioning ? "transitioning" : ""}`}>
               <div className="mock-card-header">
-                <span className="mock-card-pos">verb</span>
-                <span className="mock-card-topic">TOEIC 1 · Buổi 1</span>
+                <span className="mock-card-pos">{currentHeroWord.pos}</span>
+                <span className="mock-card-topic">{currentHeroWord.label}</span>
               </div>
-              <h2 className="mock-card-word">Afford</h2>
-              <p className="mock-card-ipa">/əˈfɔːd/</p>
+              <h2 className="mock-card-word">{currentHeroWord.word}</h2>
+              <p className="mock-card-ipa">{currentHeroWord.ipa}</p>
               <div className="mock-card-divider"></div>
-              <p className="mock-card-meaning">Có đủ khả năng chi trả (tiền bạc, thời gian)</p>
-              <p className="mock-card-example">"We can't afford to buy a new car."</p>
+              <p className="mock-card-meaning">{currentHeroWord.answer}</p>
+              <p className="mock-card-example">"{currentHeroWord.example}"</p>
               <div className="mock-card-footer">
                 <div className="mock-speaker-icon">
                   <BookOpen size={16} />
@@ -210,6 +302,178 @@ export function Home(props) {
           <div className="stat-card-glow"></div>
           <span className="stat-number">3 Chế độ</span>
           <span className="stat-label">Quiz, Review & Nghe</span>
+        </div>
+      </section>
+
+      {/* Personalized Study Recommendation Card */}
+      <section className="recommendation-section">
+        <div className="recommendation-card card">
+          <div className="rec-glow-bg"></div>
+          {loadingRec ? (
+            <div className="rec-loading">
+              <RefreshCw className="spinner-icon" size={20} />
+              <span>Đang tìm lộ trình phù hợp...</span>
+            </div>
+          ) : recommendation ? (
+            <div className="rec-content-layout">
+              {recommendation.type === "due" && (
+                <div className="rec-inner-box">
+                  <div className="rec-badge warning">
+                    <RefreshCw size={12} /> Lịch ôn tập hôm nay
+                  </div>
+                  <div className="rec-main-row">
+                    <div className="rec-info-group">
+                      <h3 className="rec-card-title">Học hôm nay</h3>
+                      <p className="rec-card-desc">
+                        Bạn có <strong className="highlight-text">{recommendation.dueCount}</strong> từ đến hạn cần ôn tập hôm nay.
+                      </p>
+                      <p className="rec-card-subtext">
+                        Ôn tập định kỳ giúp ghi nhớ từ vựng dài hạn hơn.
+                      </p>
+                    </div>
+                    <div className="rec-actions-group">
+                      <button className="cta-button primary" onClick={() => onNavigate && onNavigate("dueReview")}>
+                        Ôn hôm nay <ArrowRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {recommendation.type === "wrong" && (
+                <div className="rec-inner-box">
+                  <div className="rec-badge danger">
+                    <XCircle size={12} /> Khắc phục điểm yếu
+                  </div>
+                  <div className="rec-main-row">
+                    <div className="rec-info-group">
+                      <h3 className="rec-card-title">Học hôm nay</h3>
+                      <p className="rec-card-desc">
+                        Bạn có <strong className="highlight-text">{recommendation.wrongCount}</strong> từ hay trả lời sai nên luyện tập lại.
+                      </p>
+                      <p className="rec-card-subtext">
+                        Tập trung ôn luyện lại những từ hay trả lời sai để cải thiện phản xạ.
+                      </p>
+                    </div>
+                    <div className="rec-actions-group">
+                      <button className="cta-button primary" onClick={() => onOpenWrongWords && onOpenWrongWords()}>
+                        Ôn từ sai <ArrowRight size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {recommendation.type === "continue" && recommendation.continueData && (
+                <div className="rec-inner-box">
+                  <div className="rec-badge primary">
+                    <Compass size={12} /> Lộ trình học tập cá nhân
+                  </div>
+                  <div className="rec-main-row">
+                    <div className="rec-info-group">
+                      <h3 className="rec-card-title">Tiếp tục học</h3>
+                      {recommendation.continueData.isCourseCompleted ? (
+                        <>
+                          <p className="rec-card-desc">
+                            Bạn đã hoàn thành khóa học <strong className="highlight-text">{recommendation.continueData.courseName}</strong>! 🎉
+                          </p>
+                          <p className="rec-card-subtext">
+                            Hãy chuyển sang khóa học tiếp theo hoặc ôn luyện lại các buổi cũ.
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="rec-card-desc">
+                            Gợi ý tiếp theo: <strong className="highlight-text">{recommendation.continueData.courseName} - {recommendation.continueData.lessonName}</strong>
+                          </p>
+                          <p className="rec-card-subtext">
+                            Bài học gồm <strong className="highlight-count">{recommendation.continueData.totalWords}</strong> từ vựng.
+                          </p>
+                        </>
+                      )}
+
+                      {/* Progress Bar */}
+                      <div className="rec-progress-container">
+                        <div className="rec-progress-info">
+                          <span>Tiến độ khóa học</span>
+                          <strong className="rec-progress-text">
+                            {recommendation.continueData.completedLessons}/{recommendation.continueData.totalLessons} buổi hoàn thành
+                          </strong>
+                        </div>
+                        <div className="rec-progress-bar-bg">
+                          <div
+                            className="rec-progress-bar-fill"
+                            style={{
+                              width: `${
+                                recommendation.continueData.totalLessons > 0
+                                  ? Math.max(
+                                      3,
+                                      (recommendation.continueData.completedLessons /
+                                        recommendation.continueData.totalLessons) *
+                                        100
+                                    )
+                                  : 3
+                              }%`,
+                            }}
+                          ></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="rec-actions-group">
+                      {recommendation.continueData.isCourseCompleted ? (
+                        <button
+                          className="cta-button primary"
+                          onClick={() =>
+                            onOpenFlashcard &&
+                            onOpenFlashcard(
+                              recommendation.continueData.courseCode === "foundation"
+                                ? "toeic1"
+                                : "foundation"
+                            )
+                          }
+                        >
+                          Học khóa tiếp theo <ArrowRight size={16} />
+                        </button>
+                      ) : (
+                        <button
+                          className="cta-button primary"
+                          onClick={() =>
+                            onOpenFlashcard &&
+                            onOpenFlashcard(
+                              recommendation.continueData.courseCode,
+                              recommendation.continueData.lessonNumber
+                            )
+                          }
+                        >
+                          Học tiếp <ArrowRight size={16} />
+                        </button>
+                      )}
+                      {!recommendation.continueData.isCourseCompleted && (
+                        <button
+                          className="cta-button secondary text-btn"
+                          onClick={() => onOpenFlashcard && onOpenFlashcard(recommendation.continueData.courseCode)}
+                        >
+                          Chọn buổi khác
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {!user && (
+                <div className="rec-guest-footer-bar">
+                  <span className="guest-footer-text">💡 Đăng nhập để lưu và tiếp tục lộ trình học tập của riêng bạn.</span>
+                  <button className="rec-guest-login-btn" onClick={onOpenAuth}>
+                    Đăng nhập ngay
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rec-error">Không thể xác định lộ trình học.</div>
+          )}
         </div>
       </section>
 
@@ -250,7 +514,7 @@ export function Home(props) {
                 Xem lại từ vựng theo khóa học và buổi học trước khi kiểm tra. Tìm kiếm và nghe phát âm.
               </p>
             </div>
-            <button className="feature-button secondary" onClick={() => onOpenVocabularyReview()}>
+            <button className="feature-button primary" onClick={() => onOpenVocabularyReview()}>
               Ôn từ vựng
             </button>
           </div>
@@ -259,7 +523,7 @@ export function Home(props) {
           <div className="feature-card active-card">
             <div className="feature-card-content">
               <div className="feature-icon-wrapper listening-icon">
-                <Headphones size={24} style={{ color: "#7f56d9" }} />
+                <Headphones size={24} />
               </div>
               <span className="badge active">Luyện nghe</span>
               <h3>Listening Practice</h3>
@@ -288,7 +552,7 @@ export function Home(props) {
           <div className="feature-card active-card">
             <div className="feature-card-content">
               <div className="feature-icon-wrapper wrong-words-icon">
-                <XCircle size={24} style={{ color: "#f04438" }} />
+                <XCircle size={24} />
               </div>
               <span className="badge active">Từ hay sai</span>
               <h3>Wrong Words</h3>
@@ -296,7 +560,7 @@ export function Home(props) {
                 Tổng hợp các từ bạn hay trả lời sai để luyện tập tập trung và cải thiện ghi nhớ.
               </p>
             </div>
-            <button className="feature-button secondary" onClick={onOpenWrongWords}>
+            <button className="feature-button primary" onClick={onOpenWrongWords}>
               Xem từ sai
             </button>
           </div>
@@ -378,22 +642,52 @@ export function Home(props) {
         </div>
 
         <div className="steps-grid">
+          {/* Step 1 */}
           <div className="step-card">
-            <div className="step-number">01</div>
-            <h4>Chọn khóa học</h4>
+            <div className="step-header">
+              <span className="step-number">01</span>
+              <div className="step-icon-wrapper">
+                <Compass size={18} />
+              </div>
+            </div>
+            <h4>Chọn mục tiêu</h4>
             <p>Chọn lộ trình học phù hợp với trình độ hiện tại của bạn (Nền tảng hoặc TOEIC 1).</p>
+            <div className="step-outcome">
+              <span className="outcome-label">Kết quả:</span>
+              <span className="outcome-value">Biết hôm nay cần học gì</span>
+            </div>
           </div>
 
+          {/* Step 2 */}
           <div className="step-card">
-            <div className="step-number">02</div>
-            <h4>Chọn buổi từ vựng</h4>
-            <p>Lựa chọn học theo từng buổi riêng biệt hoặc kết hợp nhiều buổi học cùng lúc.</p>
+            <div className="step-header">
+              <span className="step-number">02</span>
+              <div className="step-icon-wrapper">
+                <BookOpen size={18} />
+              </div>
+            </div>
+            <h4>Học chủ động</h4>
+            <p>Luyện tập đa dạng qua các chế độ: trắc nghiệm phản xạ, gõ từ tiếng Anh và nghe phát âm.</p>
+            <div className="step-outcome">
+              <span className="outcome-label">Kết quả:</span>
+              <span className="outcome-value">Ghi nhớ qua nghe, chọn, nhập</span>
+            </div>
           </div>
 
+          {/* Step 3 */}
           <div className="step-card">
-            <div className="step-number">03</div>
-            <h4>Làm quiz hoặc ôn lại</h4>
-            <p>Luyện tập trắc nghiệm phản xạ nhanh hoặc mở danh sách xem lại để nghe phát âm chuẩn.</p>
+            <div className="step-header">
+              <span className="step-number">03</span>
+              <div className="step-icon-wrapper">
+                <RefreshCw size={18} />
+              </div>
+            </div>
+            <h4>Ôn lại đúng lúc</h4>
+            <p>Hệ thống tự động theo dõi các từ bạn hay làm sai hoặc đến hạn ôn tập để nhắc nhở học lại.</p>
+            <div className="step-outcome">
+              <span className="outcome-label">Kết quả:</span>
+              <span className="outcome-value">Ôn lại từ hay sai và từ đến hạn</span>
+            </div>
           </div>
         </div>
       </section>

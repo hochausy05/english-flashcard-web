@@ -4,6 +4,7 @@ import { speakWord } from "../utils/speech.js";
 import { playFeedbackSound } from "../utils/feedbackSound.js";
 import { useAuth } from "../context/AuthContext.jsx";
 import { saveStudyResultToSupabase } from "../utils/studyResultService.js";
+import { fetchLessonCompletionMap } from "../utils/lessonProgressService.js";
 
 
 // Helper to shuffle array using Fisher-Yates algorithm
@@ -81,6 +82,9 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
   const [saveErrorMsg, setSaveErrorMsg] = useState("");
   const hasSavedRef = useRef(false);
 
+  const [completionMap, setCompletionMap] = useState({});
+  const [loadingCompletion, setLoadingCompletion] = useState(false);
+
   
   const [quizMode, setQuizMode] = useState("multipleChoice"); // "multipleChoice" | "typing"
   const [selectedAnswer, setSelectedAnswer] = useState(null);
@@ -93,6 +97,15 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
   });
 
   const inputRef = useRef(null);
+  const autoNextTimerRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+      }
+    };
+  }, []);
 
   const toggleSound = () => {
     setSoundEnabled((prev) => {
@@ -169,6 +182,38 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
       return () => clearTimeout(timer);
     }
   }, [currentIndex, quizStatus, currentQuestion]);
+
+  // Tải trạng thái hoàn thành các buổi học từ Supabase
+  useEffect(() => {
+    if (!user) {
+      setCompletionMap({});
+      return;
+    }
+
+    let isMounted = true;
+    async function loadCompletion() {
+      if (quizStatus === "selecting") {
+        setLoadingCompletion(true);
+        try {
+          const map = await fetchLessonCompletionMap(user.id, selectedCourse);
+          if (isMounted) {
+            setCompletionMap(map);
+          }
+        } catch (err) {
+          console.error("Failed to load lesson completion map in Listening:", err);
+        } finally {
+          if (isMounted) {
+            setLoadingCompletion(false);
+          }
+        }
+      }
+    }
+
+    loadCompletion();
+    return () => {
+      isMounted = false;
+    };
+  }, [user, selectedCourse, quizStatus]);
 
   // Tự động lưu tiến độ luyện nghe lên Supabase khi hoàn thành bài học
   useEffect(() => {
@@ -260,6 +305,10 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
       return createListeningQuestion(card, sessionCards, cards);
     });
 
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
+
     setQuestionQueue(queue);
     setCurrentIndex(0);
     setAnswersLog([]);
@@ -285,6 +334,7 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
       ...prev,
       {
         id: currentQuestion.id,
+        vocab_item_id: currentQuestion.vocab_item_id, // Pass Supabase primary key
         word: currentQuestion.word,
         pos: currentQuestion.pos,
         answer: currentQuestion.answer,
@@ -298,6 +348,16 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
         mode: "multipleChoice",
       },
     ]);
+
+    // Auto next on correct
+    if (isCorrect) {
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+      }
+      autoNextTimerRef.current = setTimeout(() => {
+        handleNext();
+      }, 900); // AUTO_NEXT_DELAY_MS = 900
+    }
   }
 
   // Check the input answer (Typing Mode)
@@ -320,6 +380,7 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
       ...prev,
       {
         id: currentQuestion.id,
+        vocab_item_id: currentQuestion.vocab_item_id, // Pass Supabase primary key
         word: currentQuestion.word,
         pos: currentQuestion.pos,
         answer: currentQuestion.answer,
@@ -337,6 +398,9 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
 
   // Next question or finish
   function handleNext() {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
     if (currentIndex + 1 >= questionQueue.length) {
       setQuizStatus("finished");
     } else {
@@ -349,6 +413,9 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
 
   // Handle back navigations
   function handleBack() {
+    if (autoNextTimerRef.current) {
+      clearTimeout(autoNextTimerRef.current);
+    }
     if (quizStatus === "playing") {
       if (confirm("Bạn có chắc muốn dừng luyện nghe và quay lại màn chọn buổi không?")) {
         setQuizStatus("selecting");
@@ -386,6 +453,11 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
             <p className="subtitle">
               Chọn một hoặc nhiều buổi học bằng checkbox để bắt đầu luyện nghe. Hệ thống sẽ phát âm từ tiếng Anh, nghe và trả lời chính xác.
             </p>
+            {!user && (
+              <p className="guest-note">
+                💡 Đăng nhập để lưu tiến độ hoàn thành và đồng bộ kết quả học tập.
+              </p>
+            )}
           </div>
 
           <div className={`days-selector-container ${showCollapsed ? "mobile-collapsed" : ""}`}>
@@ -450,10 +522,18 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
               <div className="days-grid">
                 {daysInfo.map((info) => {
                   const isSelected = selectedDays.includes(info.day);
+                  const completion = completionMap[info.day];
+                  const isCompleted = completion?.isCompleted;
+                  const bestAccuracy = completion?.bestAccuracy || 0;
+
+                  let cardClassName = "day-card";
+                  if (isSelected) cardClassName += " selected";
+                  if (isCompleted) cardClassName += " completed";
+
                   return (
                     <div
                       key={info.day}
-                      className={`day-card ${isSelected ? "selected" : ""}`}
+                      className={cardClassName}
                       onClick={() => handleToggleDay(info.day)}
                     >
                       <div className="day-card-left">
@@ -466,9 +546,23 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
                         <div className="day-info">
                           <span className="day-title">Buổi {info.day}</span>
                           <span className="day-count">{info.count} từ vựng</span>
+                          {!isCompleted && bestAccuracy > 0 && (
+                            <span className="day-partial-text">
+                              Đã thử (Tốt nhất {bestAccuracy}%)
+                            </span>
+                          )}
                         </div>
                       </div>
-                      <Calendar className="day-card-icon" size={20} />
+                      <div className="day-card-right">
+                        {isCompleted ? (
+                          <div className="day-completed-badge" title="Đã hoàn thành 100%">
+                            <CheckCircle2 size={16} className="completed-icon" />
+                            <span className="completed-text">Hoàn thành</span>
+                          </div>
+                        ) : (
+                          <Calendar className="day-card-icon" size={20} />
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -615,9 +709,10 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
             {quizMode === "multipleChoice" ? (
               <>
                 <div className="options" style={{ marginTop: "24px" }}>
-                  {currentQuestion.options.map((option) => {
+                  {currentQuestion.options.map((option, idx) => {
                     const isThisCorrect = option === currentQuestion.word;
                     const isThisSelected = option === selectedAnswer;
+                    const labelLetter = ["A", "B", "C", "D"][idx] || "";
 
                     let className = "option";
                     if (isAnswered && isThisCorrect) className += " correct";
@@ -630,9 +725,10 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
                         onClick={() => handleSelectOption(option)}
                         disabled={isAnswered}
                       >
-                        <span>{option}</span>
-                        {isAnswered && isThisCorrect && <CheckCircle2 size={20} />}
-                        {isAnswered && isThisSelected && !isThisCorrect && <XCircle size={20} />}
+                        <span className="option-label">{labelLetter}</span>
+                        <span className="option-text">{option}</span>
+                        {isAnswered && isThisCorrect && <CheckCircle2 size={20} className="option-status-icon" />}
+                        {isAnswered && isThisSelected && !isThisCorrect && <XCircle size={20} className="option-status-icon" />}
                       </button>
                     );
                   })}
@@ -687,9 +783,11 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
                     )}
 
                     <div className="feedback-actions">
-                      <button className="primary-button next-btn" onClick={handleNext}>
-                        {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
-                      </button>
+                      {selectedAnswer !== currentQuestion.word && (
+                        <button className="primary-button next-btn" onClick={handleNext}>
+                          {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Câu tiếp theo"}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )}
