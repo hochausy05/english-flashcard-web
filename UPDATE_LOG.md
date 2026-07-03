@@ -18,6 +18,123 @@ Mỗi lần Antigravity/AI sửa xong code, phải thêm một mục mới ở t
 ### Ghi chú
 - ...
 ```
+## 2026-07-03 - Dọn dẹp CSS và Giải quyết Xung đột Selector (PHASE 2)
+
+### Đã làm
+- **Giải quyết lỗi composes không chuẩn CSS**: Xóa cú pháp `composes` lỗi trong [buttons.css](file:///d:/VIBE/english-flashcard-web/src/styles/buttons.css), thay thế bằng bộ chọn tường minh mở rộng `:active` và `:disabled` để các nút tùy chỉnh (`.primary-button`, `.secondary-button`, `.ghost-button`) nhún và hiển thị disabled đúng cách trên trình duyệt.
+- **Xóa style trùng lặp & dư thừa**:
+  - Xóa `.card` lỗi thời ở [layout.css](file:///d:/VIBE/english-flashcard-web/src/styles/layout.css) để tránh đè style thẻ chuẩn ở [cards.css](file:///d:/VIBE/english-flashcard-web/src/styles/cards.css).
+  - Xóa `.topbar` dư thừa ở đầu [flashcard.css](file:///d:/VIBE/english-flashcard-web/src/styles/flashcard.css).
+- **Consolidate các Grid**:
+  - Lưới ngày học (`.days-grid`): Gom 7 media query rải rác trong `flashcard.css` thành một khối breakpoints thống nhất từ lớn tới nhỏ. Đổi tên grid ở Dashboard thành `.roadmap-days-grid` (cập nhật file [Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx)) để tránh xung đột với lưới chọn buổi của Quiz.
+  - Lưới tiến độ (`.progress-stats-grid`): Gom toàn bộ 7 media query chồng chéo ở `progress.css` và `dashboard.css` thành một chuỗi mobile-first gọn gàng trong [progress.css](file:///d:/VIBE/english-flashcard-web/src/styles/progress.css), xóa code thừa ở `dashboard.css`.
+- **Giải quyết Collision `.stat-card`**:
+  - Dashboard Home: Đổi tên thành `.dashboard-stat-card` và `.dashboard-stat-glow` (cập nhật file [Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx)).
+  - Màn Quiz/Review: Đổi tên thành `.quiz-stat-card` (cập nhật [FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx), [WrongWords.jsx](file:///d:/VIBE/english-flashcard-web/src/components/WrongWords.jsx), [ListeningPractice.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ListeningPractice.jsx), [DueReview.jsx](file:///d:/VIBE/english-flashcard-web/src/components/DueReview.jsx)).
+  - Cập nhật styles tương ứng trong `dashboard.css` và `flashcard.css`.
+- **Kiểm thử tự động**: Chạy `npm run build` thành công, bundle CSS giảm nhẹ dung lượng xuống **96.33 kB** do dọn sạch mã thừa.
+
+### File đã sửa
+- [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx)
+- [src/components/FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx)
+- [src/components/WrongWords.jsx](file:///d:/VIBE/english-flashcard-web/src/components/WrongWords.jsx)
+- [src/components/ListeningPractice.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ListeningPractice.jsx)
+- [src/components/DueReview.jsx](file:///d:/VIBE/english-flashcard-web/src/components/DueReview.jsx)
+- [src/styles/buttons.css](file:///d:/VIBE/english-flashcard-web/src/styles/buttons.css)
+- [src/styles/layout.css](file:///d:/VIBE/english-flashcard-web/src/styles/layout.css)
+- [src/styles/dashboard.css](file:///d:/VIBE/english-flashcard-web/src/styles/dashboard.css)
+- [src/styles/flashcard.css](file:///d:/VIBE/english-flashcard-web/src/styles/flashcard.css)
+- [src/styles/progress.css](file:///d:/VIBE/english-flashcard-web/src/styles/progress.css)
+- [UPDATE_LOG.md](file:///d:/VIBE/english-flashcard-web/UPDATE_LOG.md)
+
+### Ghi chú
+- Tất cả thay đổi giữ nguyên visual behavior và logic hệ thống, chỉ giải quyết triệt để xung đột bộ chọn.
+
+## 2026-07-03 - Tách file styles.css thành các file CSS modular (PHASE 1)
+
+### Đã làm
+- **Phân tách stylesheet**: Chia nhỏ file [styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css) (6.698 dòng) thành 10 file CSS độc lập trong thư mục `src/styles/` theo nhóm tính năng và giữ nguyên thứ tự cascade gốc:
+  - `global.css` (Resets & Variables)
+  - `layout.css` (Layout nền & Page wrappers)
+  - `buttons.css` (Nút bấm)
+  - `cards.css` (Thẻ)
+  - `auth.css` (Quyền đăng nhập/đăng ký)
+  - `dashboard.css` (Trang chủ & Bento Grid)
+  - `flashcard.css` (Quiz, từ vựng, ôn tập, bài nghe)
+  - `progress.css` (Tiến trình học tập)
+  - `leaderboard.css` (Bảng xếp hạng & podium)
+  - `admin.css` (Bảng quản lý từ vựng)
+- **Tái cấu trúc styles.css gốc**: Làm sạch và thay thế toàn bộ mã bằng các dòng `@import` liên kết tới các file mới.
+- **Kiểm thử tự động**: Chạy `npm run build` thành công mà không gặp bất kỳ lỗi biên dịch nào.
+
+### File đã sửa
+- [src/styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css)
+- [src/styles/global.css](file:///d:/VIBE/english-flashcard-web/src/styles/global.css) [NEW]
+- [src/styles/layout.css](file:///d:/VIBE/english-flashcard-web/src/styles/layout.css) [NEW]
+- [src/styles/buttons.css](file:///d:/VIBE/english-flashcard-web/src/styles/buttons.css) [NEW]
+- [src/styles/cards.css](file:///d:/VIBE/english-flashcard-web/src/styles/cards.css) [NEW]
+- [src/styles/auth.css](file:///d:/VIBE/english-flashcard-web/src/styles/auth.css) [NEW]
+- [src/styles/dashboard.css](file:///d:/VIBE/english-flashcard-web/src/styles/dashboard.css) [NEW]
+- [src/styles/flashcard.css](file:///d:/VIBE/english-flashcard-web/src/styles/flashcard.css) [NEW]
+- [src/styles/progress.css](file:///d:/VIBE/english-flashcard-web/src/styles/progress.css) [NEW]
+- [src/styles/leaderboard.css](file:///d:/VIBE/english-flashcard-web/src/styles/leaderboard.css) [NEW]
+- [src/styles/admin.css](file:///d:/VIBE/english-flashcard-web/src/styles/admin.css) [NEW]
+- [UPDATE_LOG.md](file:///d:/VIBE/english-flashcard-web/UPDATE_LOG.md)
+
+### Ghi chú
+- Giữ nguyên toàn bộ visual behavior, tên class, và logic component React, đảm bảo an toàn tối đa cho hệ thống.
+- Playwright subagent báo lỗi EOF kết nối (nằm ngoài kiểm soát của agent), khuyến nghị kiểm tra UI thủ công trên trình duyệt.
+
+## 2026-07-03 - Thực hiện nâng cấp toàn diện giao diện (UI/UX) và Layout
+### Đã làm
+- **Đồng bộ hóa hệ thống Token & Style**:
+  - Cài đặt display font family mới **Plus Jakarta Sans** cho tiêu đề lớn.
+  - Áp dụng hệ màu Soft Structuralism đồng nhất với màu nhấn Indigo `#3538cd` và hệ màu soft pastel dịu mắt cho các nhãn trạng thái.
+  - Chuẩn hóa hệ thống bo góc (`var(--radius-lg)` 16px, `var(--radius-md)` 10px) và Ambient Shadows mịn nhẹ khuếch tán.
+- **Tái cấu trúc Dashboard / Home**:
+  - Triển khai Bento Grid bất đối xứng (asymmetrical grid) cho chế độ học tập.
+  - Thiết kế lại cấu trúc thẻ xoay mẫu từ vựng Hero thành Double-Bezel nested shell (bezel xám mịn bọc core trắng nổi khối).
+  - Thu gọn và tinh chỉnh cách học 3 bước thành timeline ngang thanh mảnh không gây rối mắt.
+- **Cải tiến Flashcard Quiz**:
+  - Định hình lại các thẻ chọn buổi học (`lesson-card`) sang màu nền trắng tinh tế, viền emerald mềm mại khi đã hoàn thành.
+  - Nâng cấp khối từ vựng chính thành Double-Bezel bọc gradient Indigo; tích hợp hiệu ứng tactile nhún phản hồi sống động cho các nút đáp án trắc nghiệm.
+  - Tạo hộp thông báo kết quả (Correct/Incorrect) phản màu nền trượt lên mượt mà ở chân thẻ.
+- **Bổ sung Teaser Blur cho Guest Leaderboard**:
+  - Bảng xếp hạng giờ đây cho phép Guest xem thử danh sách vinh danh (Top 3 Podium và bảng xếp hạng) được phủ một lớp kính mờ glassmorphism tinh xảo kèm theo popup mời Đăng nhập kích thích động lực.
+- **Kiểm thử & Build**:
+  - Chạy bundler `npm run build` hoàn thành biên dịch sạch sẽ không cảnh báo lỗi.
+
+### File đã sửa
+- [src/styles.css](file:///d:/VIBE/english-flashcard-web/src/styles.css)
+- [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx)
+- [src/components/FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx)
+- [src/components/Leaderboard.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Leaderboard.jsx)
+- [src/components/WrongWords.jsx](file:///d:/VIBE/english-flashcard-web/src/components/WrongWords.jsx)
+- [src/components/DueReview.jsx](file:///d:/VIBE/english-flashcard-web/src/components/DueReview.jsx)
+- [UPDATE_LOG.md](file:///d:/VIBE/english-flashcard-web/UPDATE_LOG.md)
+
+### Ghi chú
+- Tất cả chức năng hoạt động đồng nhất, bảo vệ tốt logic Supabase RPC và an toàn tài khoản học viên.
+
+## 2026-07-03 - Audit toàn diện giao diện (UI/UX) và lập kế hoạch nâng cấp theo Taste Skill
+
+### Đã làm
+- **Kiểm tra & Đánh giá giao diện (UI Audit)**:
+  - Khảo sát toàn bộ các trang chính: Home/Dashboard, Flashcard Quiz, Progress Dashboard, Leaderboard, AuthPanel.
+  - Phân tích độ nhất quán màu sắc, tính phân bậc phân cấp thị giác (visual hierarchy), khoảng cách (spacing), và độ phản hồi xúc giác (tactile feedback) trên cả desktop và mobile.
+  - Đánh giá hiện trạng của các trạng thái đặc biệt: Loading, Empty, Error, Success.
+  - Chỉ ra các điểm còn yếu, các component tiềm năng để tái sử dụng, và lập danh sách các ưu tiên nâng cấp.
+- **Lập kế hoạch nâng cấp (Implementation Plan)**:
+  - Soạn thảo tài liệu [implementation_plan.md](file:///C:/Users/hocha/.gemini/antigravity-ide/brain/283b107d-eda2-4568-a28a-aa0f1df67db1/implementation_plan.md) chi tiết mô tả phương án tối ưu CSS, chuyển đổi bố cục bento bất đối xứng, cải tiến visual podium leaderboard, làm mờ overlay cho Guest, và chuẩn hóa các trạng thái loading skeleton.
+- **Tuân thủ quy trình**:
+  - Không thay đổi mã nguồn (source code) ở bước audit này để đảm bảo tính an toàn và nhận phản hồi từ người dùng.
+
+### File đã sửa
+- [UPDATE_LOG.md](file:///d:/VIBE/english-flashcard-web/UPDATE_LOG.md)
+
+### Ghi chú
+- Chờ phản hồi và phê duyệt kế hoạch nâng cấp của người học trước khi tiến hành chỉnh sửa mã nguồn CSS/JSX.
+
 ## 2026-07-02 - Phát triển chức năng Bảng xếp hạng từ vựng (Leaderboard) bảo mật giữa các user
 
 ### Đã làm

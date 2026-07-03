@@ -267,20 +267,22 @@ export function Home(props) {
             <div className="mock-card card-3"></div>
             <div className="mock-card card-2"></div>
             <div className={`mock-card card-1 ${isTransitioning ? "transitioning" : ""}`}>
-              <div className="mock-card-header">
-                <span className="mock-card-pos">{currentHeroWord.pos}</span>
-                <span className="mock-card-topic">{currentHeroWord.label}</span>
-              </div>
-              <h2 className="mock-card-word">{currentHeroWord.word}</h2>
-              <p className="mock-card-ipa">{currentHeroWord.ipa}</p>
-              <div className="mock-card-divider"></div>
-              <p className="mock-card-meaning">{currentHeroWord.answer}</p>
-              <p className="mock-card-example">"{currentHeroWord.example}"</p>
-              <div className="mock-card-footer">
-                <div className="mock-speaker-icon">
-                  <BookOpen size={16} />
+              <div className="mock-card-inner">
+                <div className="mock-card-header">
+                  <span className="mock-card-pos">{currentHeroWord.pos}</span>
+                  <span className="mock-card-topic">{currentHeroWord.label}</span>
                 </div>
-                <span className="mock-card-hint">Từ vựng thông dụng</span>
+                <h2 className="mock-card-word">{currentHeroWord.word}</h2>
+                <p className="mock-card-ipa">{currentHeroWord.ipa}</p>
+                <div className="mock-card-divider"></div>
+                <p className="mock-card-meaning">{currentHeroWord.answer}</p>
+                <p className="mock-card-example">"{currentHeroWord.example}"</p>
+                <div className="mock-card-footer">
+                  <div className="mock-speaker-icon">
+                    <BookOpen size={16} />
+                  </div>
+                  <span className="mock-card-hint">Từ vựng thông dụng</span>
+                </div>
               </div>
             </div>
           </div>
@@ -289,23 +291,23 @@ export function Home(props) {
 
       {/* 2. Quick Stats Dashboard */}
       <section className="stats-section">
-        <div className="stat-card">
-          <div className="stat-card-glow"></div>
+        <div className="dashboard-stat-card">
+          <div className="dashboard-stat-glow"></div>
           <span className="stat-number">{stats.courses}</span>
           <span className="stat-label">Khóa học hiện có</span>
         </div>
-        <div className="stat-card">
-          <div className="stat-card-glow"></div>
+        <div className="dashboard-stat-card">
+          <div className="dashboard-stat-glow"></div>
           <span className="stat-number">{stats.words}+</span>
           <span className="stat-label">Từ vựng chất lượng</span>
         </div>
-        <div className="stat-card">
-          <div className="stat-card-glow"></div>
+        <div className="dashboard-stat-card">
+          <div className="dashboard-stat-glow"></div>
           <span className="stat-number">{stats.sessions}</span>
           <span className="stat-label">Buổi học được thiết lập</span>
         </div>
-        <div className="stat-card">
-          <div className="stat-card-glow"></div>
+        <div className="dashboard-stat-card">
+          <div className="dashboard-stat-glow"></div>
           <span className="stat-number">3 Chế độ</span>
           <span className="stat-label">Quiz, Review & Nghe</span>
         </div>
@@ -492,7 +494,7 @@ export function Home(props) {
 
         <div className="features-grid">
           {/* Flashcard Quiz */}
-          <div className="feature-card active-card">
+          <div className="feature-card active-card bento-2col">
             <div className="feature-card-content">
               <div className="feature-icon-wrapper quiz-icon">
                 <BookOpen size={24} />
@@ -542,7 +544,7 @@ export function Home(props) {
             </button>
           </div>
 
-          <div className="feature-card disabled-card">
+          <div className="feature-card disabled-card bento-2col">
             <div className="feature-card-content">
               <div className="feature-icon-wrapper coming-icon">
                 <GraduationCap size={24} />

@@ -939,15 +939,15 @@ export function ListeningPractice({ cards, onBackHome, initialCourse }) {
           </div>
 
           <div className="stats-grid">
-            <div className="stat-card">
+            <div className="quiz-stat-card">
               <span className="stat-label">Tổng số câu</span>
               <span className="stat-val">{questionQueue.length}</span>
             </div>
-            <div className="stat-card correct">
+            <div className="quiz-stat-card correct">
               <span className="stat-label">Đúng</span>
               <span className="stat-val">{correctCount}</span>
             </div>
-            <div className="stat-card wrong">
+            <div className="quiz-stat-card wrong">
               <span className="stat-label">Sai</span>
               <span className="stat-val">{questionQueue.length - correctCount}</span>
             </div>

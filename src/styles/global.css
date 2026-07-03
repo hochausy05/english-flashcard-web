@@ -1,0 +1,90 @@
+/* --- Block: Lines 1 - 90 --- */
+@import url("https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700;800&display=swap");
+
+:root {
+  font-family: "Be Vietnam Pro", Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-display: "Plus Jakarta Sans", "Be Vietnam Pro", sans-serif;
+  color: #101828;
+  background: #f8f9fc;
+  background-attachment: fixed;
+
+  /* =============================================
+     DESIGN SYSTEM TOKENS
+     ============================================= */
+
+  /* --- Color Palette (Refined Soft Structuralism) --- */
+  --color-primary: #3538cd;
+  --color-primary-hover: #2d31b2;
+  --color-primary-light: #eef4ff;
+  --color-primary-lighter: #f4f8ff;
+  --color-primary-shadow: rgba(53, 56, 205, 0.1);
+  --color-primary-gradient: linear-gradient(135deg, #3538cd, #5357eb);
+
+  --color-success: #079455;
+  --color-success-hover: #067647;
+  --color-success-bg: #edfcf2;
+  --color-success-border: #abefc6;
+
+  --color-error: #d92d20;
+  --color-error-hover: #b42318;
+  --color-error-bg: #fff1f3;
+  --color-error-border: #fecdca;
+
+  --color-warning: #dc6803;
+  --color-warning-hover: #b25302;
+  --color-warning-bg: #fffaeb;
+
+  --color-text: #101828;
+  --color-text-secondary: #344054;
+  --color-text-muted: #475467;
+  --color-text-light: #667085;
+
+  --color-bg: #ffffff;
+  --color-bg-subtle: #f9fafb;
+  --color-bg-muted: #f2f4f7;
+
+  --color-border: #eaecf0;
+  --color-border-light: rgba(99, 115, 145, 0.05);
+  --color-border-strong: #d0d5dd;
+
+  /* --- Spacing --- */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 16px;
+  --space-lg: 24px;
+  --space-xl: 32px;
+  --space-2xl: 48px;
+
+  /* --- Radius --- */
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-full: 999px;
+
+  /* --- Shadows (Ambient & Diffused) --- */
+  --shadow-xs: 0 1px 2px rgba(16, 24, 40, 0.04);
+  --shadow-sm: 0 2px 6px rgba(16, 24, 40, 0.03);
+  --shadow-md: 0 8px 30px rgba(16, 24, 40, 0.02), 0 2px 6px rgba(16, 24, 40, 0.02);
+  --shadow-lg: 0 16px 40px rgba(16, 24, 40, 0.03), 0 4px 12px rgba(16, 24, 40, 0.02);
+  --shadow-xl: 0 24px 64px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.03);
+  --shadow-primary: 0 8px 24px rgba(53, 56, 205, 0.12);
+
+  /* --- Transitions --- */
+  --transition-fast: 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-smooth: 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-bounce: 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button {
+  font: inherit;
+}

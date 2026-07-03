@@ -656,21 +656,23 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
           {quizMode === "multipleChoice" ? (
             <>
               <div className="word-box">
-                <button
-                  className="speaker"
-                  onClick={() => speakWord(currentQuestion.word, currentQuestion.audio)}
-                >
-                  <Volume2 size={26} />
-                </button>
-                <div>
-                  <h2>{currentQuestion.word}</h2>
-                  <p className="ipa">
-                    {currentQuestion.pos ? (
-                      currentQuestion.ipa ? `${currentQuestion.pos} · ${currentQuestion.ipa}` : currentQuestion.pos
-                    ) : (
-                      currentQuestion.ipa || "Chưa có phiên âm"
-                    )}
-                  </p>
+                <div className="word-box-inner">
+                  <button
+                    className="speaker"
+                    onClick={() => speakWord(currentQuestion.word, currentQuestion.audio)}
+                  >
+                    <Volume2 size={26} />
+                  </button>
+                  <div>
+                    <h2>{currentQuestion.word}</h2>
+                    <p className="ipa">
+                      {currentQuestion.pos ? (
+                        currentQuestion.ipa ? `${currentQuestion.pos} · ${currentQuestion.ipa}` : currentQuestion.pos
+                      ) : (
+                        currentQuestion.ipa || "Chưa có phiên âm"
+                      )}
+                    </p>
+                  </div>
                 </div>
               </div>
 
@@ -703,7 +705,7 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
               </div>
 
               {isAnswered && (
-                <div className="result-box">
+                <div className={`result-box ${isCorrect ? "correct" : "wrong"}`}>
                   <p className={isCorrect ? "result correct-text" : "result wrong-text"}>
                     {isCorrect ? "Chính xác." : `Sai rồi. Đáp án đúng là: ${currentQuestion.answer}`}
                   </p>
@@ -888,15 +890,15 @@ export function WrongWords({ cards, onBackHome, onOpenAuth }) {
           </div>
 
           <div className="stats-grid">
-            <div className="stat-card">
+            <div className="quiz-stat-card">
               <span className="stat-label">Tổng số câu</span>
               <span className="stat-val">{questionQueue.length}</span>
             </div>
-            <div className="stat-card correct">
+            <div className="quiz-stat-card correct">
               <span className="stat-label">Đúng</span>
               <span className="stat-val">{correctCount}</span>
             </div>
-            <div className="stat-card wrong">
+            <div className="quiz-stat-card wrong">
               <span className="stat-label">Sai</span>
               <span className="stat-val">{incorrectAnswers.length}</span>
             </div>

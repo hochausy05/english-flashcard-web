@@ -1,0 +1,55 @@
+/* --- Block: Lines 91 - 164 --- */
+.page {
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 24px 18px;
+}
+
+/* Home layout: compact, centered */
+.page--home {
+  width: min(1100px, 100%);
+}
+
+/* Admin layout: full-width workspace */
+.page--admin {
+  width: 100%;
+  max-width: 100%;
+  padding: 16px 24px;
+  background: var(--color-bg-subtle);
+}
+
+.hero {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.eyebrow {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #3157d5;
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(32px, 6vw, 54px);
+  line-height: 1.02;
+}
+
+.subtitle {
+  width: min(640px, 100%);
+  margin: 14px auto 0;
+  color: #526071;
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 22px;
+}

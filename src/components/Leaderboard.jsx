@@ -16,6 +16,14 @@ import {
   ChevronRight
 } from "lucide-react";
 
+const MOCK_LEADERBOARD = [
+  { rank: 1, displayName: "Nguyễn Minh Khang", learnedWords: 156, completedLessons: 12, accuracy: 95, totalSessions: 22, leaderboardScore: 1450 },
+  { rank: 2, displayName: "Lê Hoàng Nam", learnedWords: 132, completedLessons: 10, accuracy: 89, totalSessions: 18, leaderboardScore: 1180 },
+  { rank: 3, displayName: "Trần Thu Thảo", learnedWords: 124, completedLessons: 9, accuracy: 91, totalSessions: 15, leaderboardScore: 1050 },
+  { rank: 4, displayName: "Phạm Quốc Huy", learnedWords: 98, completedLessons: 8, accuracy: 84, totalSessions: 12, leaderboardScore: 850 },
+  { rank: 5, displayName: "Vũ Bảo Ngọc", learnedWords: 92, completedLessons: 7, accuracy: 82, totalSessions: 11, leaderboardScore: 780 }
+];
+
 export function Leaderboard({ onBackHome, onOpenAuth }) {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
@@ -24,6 +32,7 @@ export function Leaderboard({ onBackHome, onOpenAuth }) {
 
   const loadData = useCallback(async () => {
     if (!user) {
+      setLeaderboardData(MOCK_LEADERBOARD);
       setLoading(false);
       return;
     }
@@ -49,36 +58,6 @@ export function Leaderboard({ onBackHome, onOpenAuth }) {
     loadData();
   }, [loadData]);
 
-  // Guest Prompt Screen
-  if (!user) {
-    return (
-      <div className="leaderboard-container guest-mode" id="leaderboard-container">
-        <nav className="back-nav">
-          <button className="ghost-button" onClick={onBackHome}>
-            <ArrowLeft size={16} /> Trang chủ
-          </button>
-        </nav>
-
-        <div className="leaderboard-login-prompt card">
-          <div className="leaderboard-login-prompt-icon">
-            <Trophy size={48} className="gold-trophy" />
-          </div>
-          <h2>Bảng xếp hạng từ vựng</h2>
-          <p>
-            Đăng nhập để xem vị trí của bạn trên bảng xếp hạng, đua top học tập
-            và đồng bộ kết quả từ vựng cùng cộng đồng.
-          </p>
-          <button
-            className="cta-button primary"
-            onClick={onOpenAuth}
-            id="leaderboard-login-btn"
-          >
-            <LogIn size={18} /> Đăng nhập ngay
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   // Helper to render Top 3 Rank Visual indicators
   const renderRankBadge = (rank) => {
@@ -110,7 +89,7 @@ export function Leaderboard({ onBackHome, onOpenAuth }) {
   };
 
   return (
-    <div className="leaderboard-container" id="leaderboard-container">
+    <div className={`leaderboard-container ${!user ? "guest-blurred" : ""}`} id="leaderboard-container">
       {/* Back Nav and Refresh */}
       <nav className="leaderboard-nav">
         <button className="ghost-button" onClick={onBackHome}>
@@ -289,6 +268,28 @@ export function Leaderboard({ onBackHome, onOpenAuth }) {
             <p className="disclaimer-text">💡 Admin không tham gia bảng xếp hạng.</p>
           </footer>
         </>
+      )}
+
+      {!user && (
+        <div className="guest-overlay-wrapper">
+          <div className="leaderboard-login-prompt">
+            <div className="leaderboard-login-prompt-icon">
+              <Trophy size={36} className="gold-trophy" style={{ color: "#e9c46a" }} />
+            </div>
+            <h2>Bảng xếp hạng vinh danh</h2>
+            <p>
+              Đăng nhập để xem vị trí của bạn trên bảng xếp hạng, đua top học tập
+              và đồng bộ kết quả từ vựng cùng cộng đồng.
+            </p>
+            <button
+              className="cta-button primary"
+              onClick={onOpenAuth}
+              id="leaderboard-login-btn"
+            >
+              <LogIn size={18} /> Đăng nhập ngay
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
