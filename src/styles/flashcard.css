@@ -67,11 +67,15 @@
 }
 
 .example {
-  margin: 18px 0 22px;
-  padding: 0 4px;
+  margin: 20px 0 24px;
+  padding: 14px 16px;
   color: var(--color-text-secondary);
-  font-size: 18px;
-  line-height: 1.6;
+  font-size: 17px;
+  font-style: italic;
+  line-height: 1.65;
+  background: rgba(49, 87, 213, 0.025);
+  border-left: 3px solid rgba(49, 87, 213, 0.3);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
 }
 
 .options {
@@ -180,22 +184,24 @@
   align-items: center;
   justify-content: space-between;
   gap: 16px;
-  margin-top: 24px;
-  padding: 16px 20px;
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
-  box-shadow: var(--shadow-sm);
-  animation: slideUp 0.35s var(--transition-smooth) both;
+  margin-top: 28px;
+  padding: 20px 24px;
+  border-radius: var(--radius-xl);
+  border: 1.5px solid var(--color-border);
+  box-shadow: 0 8px 24px -8px rgba(26, 49, 103, 0.1);
+  animation: slideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
 .result-box.correct {
   background: var(--color-success-bg);
   border-color: var(--color-success-border);
+  box-shadow: 0 8px 24px -8px rgba(7, 148, 85, 0.12);
 }
 
 .result-box.wrong {
   background: var(--color-error-bg);
   border-color: var(--color-error-border);
+  box-shadow: 0 8px 24px -8px rgba(217, 45, 32, 0.1);
 }
 
 @keyframes slideUp {
@@ -211,9 +217,9 @@
 
 .result {
   margin: 0;
-  font-weight: 800;
-  font-size: 16px;
-  line-height: 1.4;
+  font-weight: 700;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
 .correct-text {
@@ -511,18 +517,19 @@
 }
 
 .score-display {
-  margin: 16px 0 8px;
+  margin: 20px 0 8px;
 }
 
 .score-num {
-  font-size: 54px;
+  font-size: 60px;
   font-weight: 800;
   color: #3157d5;
   line-height: 1;
+  letter-spacing: -0.02em;
 }
 
 .score-total {
-  font-size: 18px;
+  font-size: 20px;
   color: #475467;
   font-weight: 600;
   margin-left: 6px;
@@ -532,7 +539,7 @@
   font-size: 18px;
   font-weight: 700;
   color: #101828;
-  margin: 0;
+  margin: 8px 0 0;
 }
 
 .stats-grid {
@@ -547,20 +554,52 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 16px;
-  background: #f8f9fc;
-  border: 1px solid #eaecf0;
+  padding: 18px 16px;
+  background: white;
+  border: 1px solid rgba(99, 115, 145, 0.08);
   border-radius: 16px;
+  box-shadow: 0 10px 20px -8px rgba(26, 49, 103, 0.04), inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  position: relative;
+  z-index: 1;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.quiz-stat-card::after {
+  content: '';
+  position: absolute;
+  inset: -4px;
+  border: 1px solid rgba(99, 115, 145, 0.06);
+  background: rgba(99, 115, 145, 0.02);
+  border-radius: 20px;
+  z-index: -1;
+  pointer-events: none;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.quiz-stat-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--color-primary-light);
+  box-shadow: 0 16px 32px -12px rgba(49, 87, 213, 0.12);
 }
 
 .quiz-stat-card.correct {
-  background: #ecfdf3;
-  border-color: #d1fadf;
+  background: #f6fef9;
+  border-color: rgba(7, 148, 85, 0.12);
+}
+
+.quiz-stat-card.correct::after {
+  background: rgba(7, 148, 85, 0.03);
+  border-color: rgba(7, 148, 85, 0.08);
 }
 
 .quiz-stat-card.wrong {
-  background: #fff1f3;
-  border-color: #fee4e2;
+  background: #fffbfa;
+  border-color: rgba(240, 68, 56, 0.12);
+}
+
+.quiz-stat-card.wrong::after {
+  background: rgba(240, 68, 56, 0.03);
+  border-color: rgba(240, 68, 56, 0.08);
 }
 
 .stat-label {
@@ -1625,7 +1664,7 @@
 
 .quiz-mode-options {
   display: grid !important;
-  grid-template-columns: repeat(2, 1fr) !important;
+  grid-template-columns: repeat(3, 1fr) !important;
   gap: 16px !important;
 }
 
@@ -1953,15 +1992,29 @@
   cursor: pointer !important;
   box-shadow: 0 12px 28px rgba(49, 87, 213, 0.2), 0 0 0 0 rgba(49, 87, 213, 0.3) !important;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  animation: audioPulse 2.5s infinite ease-in-out !important;
 }
 
 .listening-speaker-large:hover {
   transform: scale(1.05) !important;
-  box-shadow: 0 16px 36px rgba(49, 87, 213, 0.3), 0 0 0 6px rgba(49, 87, 213, 0.12) !important;
+  box-shadow: 0 16px 36px rgba(49, 87, 213, 0.3), 0 0 0 8px rgba(49, 87, 213, 0.15) !important;
+  animation: audioPulse 1.5s infinite ease-in-out !important;
 }
 
 .listening-speaker-large:active {
   transform: scale(0.97) !important;
+}
+
+@keyframes audioPulse {
+  0% {
+    box-shadow: 0 12px 28px rgba(49, 87, 213, 0.2), 0 0 0 0 rgba(49, 87, 213, 0.3) !important;
+  }
+  70% {
+    box-shadow: 0 12px 28px rgba(49, 87, 213, 0.2), 0 0 0 15px rgba(49, 87, 213, 0) !important;
+  }
+  100% {
+    box-shadow: 0 12px 28px rgba(49, 87, 213, 0.2), 0 0 0 0 rgba(49, 87, 213, 0) !important;
+  }
 }
 
 .speaker-text {
@@ -2227,16 +2280,16 @@
 
 /* Big checkcircle styling for completed lesson card */
 .lesson-completed-circle {
-  width: 44px;
-  height: 44px;
+  width: 48px;
+  height: 48px;
   border-radius: 50%;
-  background: var(--color-success-bg);
-  color: var(--color-success);
+  background: var(--color-emerald-bg, #ecfdf5);
+  color: var(--color-emerald, #059669);
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid var(--color-success-border);
-  box-shadow: 0 4px 10px rgba(7, 148, 85, 0.05);
+  border: 1.5px solid var(--color-emerald-border, #a7f3d0);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.12);
   transition: all var(--transition-fast);
 }
 
@@ -2327,14 +2380,15 @@
 
 /* STATE: Completed (Unselected) */
 .lesson-card.completed {
-  border-color: var(--color-success-border) !important;
-  background: white !important;
-  box-shadow: var(--shadow-xs) !important;
+  border-color: rgba(5, 150, 105, 0.25) !important;
+  background: rgba(236, 253, 245, 0.4) !important;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.06) !important;
 }
 
 .lesson-card.completed:hover {
-  border-color: var(--color-success) !important;
-  box-shadow: var(--shadow-md) !important;
+  border-color: var(--color-emerald, #059669) !important;
+  background: rgba(236, 253, 245, 0.7) !important;
+  box-shadow: 0 8px 20px rgba(5, 150, 105, 0.1) !important;
 }
 
 /* STATE: Selected AND Completed */

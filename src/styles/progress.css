@@ -110,13 +110,13 @@
 }
 
 .progress-stat-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
   transition: all 0.3s ease;
 }
 
@@ -155,7 +155,7 @@
 }
 
 .progress-stat-number {
-  font-size: clamp(26px, 3.5vw, 34px);
+  font-size: clamp(28px, 3.5vw, 36px);
   font-weight: 800;
   color: #101828;
   line-height: 1;
@@ -163,11 +163,11 @@
 }
 
 .progress-stat-label {
-  font-size: 12px;
+  font-size: 11px;
   color: #667085;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.03em;
+  letter-spacing: 0.04em;
 }
 
 /* Review Today Card */
@@ -335,6 +335,18 @@
   border: 1px solid rgba(127, 86, 217, 0.15);
 }
 
+.session-mode-badge.mode-vietnamese_typing {
+  background: var(--color-warning-bg);
+  color: var(--color-warning);
+  border: 1px solid rgba(220, 104, 3, 0.15);
+}
+
+.session-mode-badge.mode-vocabulary_test {
+  background: var(--color-emerald-bg);
+  color: var(--color-emerald);
+  border: 1px solid var(--color-emerald-border);
+}
+
 .session-mode-badge.mode-unknown {
   background: var(--color-bg-muted);
   color: var(--color-text-muted);
@@ -410,9 +422,20 @@
 .accuracy-fill {
   fill: none;
   stroke: #3157d5;
-  stroke-width: 3;
+  stroke-width: 3.5;
   stroke-linecap: round;
-  transition: stroke-dasharray 0.6s ease;
+  stroke-dashoffset: 100;
+  animation: svgCircleDraw 1.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  transition: stroke-dasharray 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes svgCircleDraw {
+  from {
+    stroke-dashoffset: 100;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
 }
 
 .accuracy-text {

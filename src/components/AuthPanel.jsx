@@ -101,126 +101,128 @@ export function AuthPanel({ onBackHome }) {
         </button>
       </div>
 
-      <div className="auth-card card">
-        <div className="auth-card-glow"></div>
-        <div className="auth-card-header">
-          <div className="auth-icon-wrapper">
-            <Sparkles size={24} className="auth-icon-sparkle" />
-          </div>
-          <h2>{mode === "signin" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}</h2>
-          <p>
-            {mode === "signin"
-              ? "Đăng nhập để đồng bộ và lưu tiến độ học của bạn."
-              : "Bắt đầu hành trình chinh phục tiếng Anh ngay hôm nay."}
-          </p>
-        </div>
-
-        {message.text && (
-          <div className={`auth-message-box ${message.type}`}>
-            <AlertCircle size={18} className="message-icon" />
-            <span>{message.text}</span>
-          </div>
-        )}
-
-        <form onSubmit={handleSubmit} className="auth-form">
-          <div className="input-group">
-            <label htmlFor="email">Địa chỉ Email</label>
-            <div className="input-wrapper">
-              <Mail size={18} className="input-icon" />
-              <input
-                id="email"
-                type="email"
-                placeholder="email@example.com"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isSubmitting}
-              />
+      <div className="auth-card-shell">
+        <div className="auth-card">
+          <div className="auth-card-glow"></div>
+          <div className="auth-card-header">
+            <div className="auth-icon-wrapper">
+              <Sparkles size={24} className="auth-icon-sparkle" />
             </div>
+            <h2>{mode === "signin" ? "Chào mừng trở lại" : "Tạo tài khoản mới"}</h2>
+            <p>
+              {mode === "signin"
+                ? "Đăng nhập để đồng bộ và lưu tiến độ học của bạn."
+                : "Bắt đầu hành trình chinh phục tiếng Anh ngay hôm nay."}
+            </p>
           </div>
 
-          {mode === "signup" && (
+          {message.text && (
+            <div className={`auth-message-box ${message.type}`}>
+              <AlertCircle size={18} className="message-icon" />
+              <span>{message.text}</span>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="auth-form">
             <div className="input-group">
-              <label htmlFor="displayName">Tên hiển thị (Tùy chọn)</label>
               <div className="input-wrapper">
-                <User size={18} className="input-icon" />
+                <Mail size={18} className="input-icon" />
                 <input
-                  id="displayName"
-                  type="text"
-                  placeholder="Ví dụ: Nguyễn Văn A"
-                  value={displayName}
-                  onChange={(e) => setDisplayName(e.target.value)}
+                  id="email"
+                  type="email"
+                  placeholder=" "
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
                   disabled={isSubmitting}
                 />
+                <label htmlFor="email" className="floating-label">Địa chỉ Email</label>
               </div>
             </div>
-          )}
 
-          <div className="input-group">
-            <label htmlFor="password">Mật khẩu</label>
-            <div className="input-wrapper">
-              <Lock size={18} className="input-icon" />
-              <input
-                id="password"
-                type="password"
-                placeholder="••••••"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={isSubmitting}
-              />
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            className="auth-submit-btn"
-            disabled={isSubmitting || loading}
-          >
-            {isSubmitting ? (
-              <span className="spinner"></span>
-            ) : mode === "signin" ? (
-              <>
-                <LogIn size={18} /> Đăng nhập
-              </>
-            ) : (
-              <>
-                <UserPlus size={18} /> Đăng ký
-              </>
+            {mode === "signup" && (
+              <div className="input-group">
+                <div className="input-wrapper">
+                  <User size={18} className="input-icon" />
+                  <input
+                    id="displayName"
+                    type="text"
+                    placeholder=" "
+                    value={displayName}
+                    onChange={(e) => setDisplayName(e.target.value)}
+                    disabled={isSubmitting}
+                  />
+                  <label htmlFor="displayName" className="floating-label">Tên hiển thị (Tùy chọn)</label>
+                </div>
+              </div>
             )}
-          </button>
-        </form>
 
-        <div className="auth-card-footer">
-          {mode === "signin" ? (
-            <p>
-              Chưa có tài khoản?{" "}
-              <button
-                type="button"
-                className="toggle-mode-btn"
-                onClick={() => {
-                  setMode("signup");
-                  setMessage({ type: "", text: "" });
-                }}
-              >
-                Đăng ký ngay
-              </button>
-            </p>
-          ) : (
-            <p>
-              Đã có tài khoản?{" "}
-              <button
-                type="button"
-                className="toggle-mode-btn"
-                onClick={() => {
-                  setMode("signin");
-                  setMessage({ type: "", text: "" });
-                }}
-              >
-                Đăng nhập
-              </button>
-            </p>
-          )}
+            <div className="input-group">
+              <div className="input-wrapper">
+                <Lock size={18} className="input-icon" />
+                <input
+                  id="password"
+                  type="password"
+                  placeholder=" "
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  disabled={isSubmitting}
+                />
+                <label htmlFor="password" className="floating-label">Mật khẩu</label>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              className="auth-submit-btn"
+              disabled={isSubmitting || loading}
+            >
+              {isSubmitting ? (
+                <span className="spinner"></span>
+              ) : mode === "signin" ? (
+                <>
+                  <LogIn size={18} /> Đăng nhập
+                </>
+              ) : (
+                <>
+                  <UserPlus size={18} /> Đăng ký
+                </>
+              )}
+            </button>
+          </form>
+
+          <div className="auth-card-footer">
+            {mode === "signin" ? (
+              <p>
+                Chưa có tài khoản?{" "}
+                <button
+                  type="button"
+                  className="toggle-mode-btn"
+                  onClick={() => {
+                    setMode("signup");
+                    setMessage({ type: "", text: "" });
+                  }}
+                >
+                  Đăng ký ngay
+                </button>
+              </p>
+            ) : (
+              <p>
+                Đã có tài khoản?{" "}
+                <button
+                  type="button"
+                  className="toggle-mode-btn"
+                  onClick={() => {
+                    setMode("signin");
+                    setMessage({ type: "", text: "" });
+                  }}
+                >
+                  Đăng nhập
+                </button>
+              </p>
+            )}
+          </div>
         </div>
       </div>
     </div>

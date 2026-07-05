@@ -402,3 +402,22 @@ Mỗi khi sửa lỗi xong, phải thêm vào file này.
 ### Không được lặp lại
 - Tránh viết các câu lệnh SELECT lồng nhau trực tiếp trên cùng một bảng trong phần điều kiện `USING` hoặc `WITH CHECK` của chính sách RLS của bảng đó. Hãy sử dụng các hàm `SECURITY DEFINER` để truy xuất thuộc tính phân quyền nhằm tránh đệ quy vô hạn.
 
+---
+
+## Lưu ý thiết kế: Bỏ sót migration CHECK constraints khi thêm chế độ học tập/kiểm tra mới khiến Supabase chặn ghi session
+
+### Hiện tượng
+- Khi thêm chế độ học tập hoặc kiểm tra mới (ví dụ: `vietnamese_typing` hoặc `vocabulary_test`) và chạy ở local frontend hoạt động bình thường, nhưng khi lưu kết quả lên Supabase thì bị báo lỗi từ API do database vi phạm ràng buộc kiểm tra (CHECK constraint violation) trên cột `mode`.
+
+### Nguyên nhân
+- Bảng `study_sessions` và `study_answers` có chứa cột `mode` với một ràng buộc CHECK cứng (`study_sessions_mode_check` và `study_answers_mode_check`) kiểm tra giá trị nằm trong danh sách các mode được định nghĩa sẵn.
+- Nếu frontend gửi một mode mới lên mà database chưa cập nhật ràng buộc CHECK tương ứng, hệ thống sẽ từ chối truy vấn INSERT.
+
+### Cách fix
+- Tạo tệp migration SQL (ví dụ: `supabase/vocabulary_test_migration.sql`) thực hiện DROP CONSTRAINT cũ và ADD CONSTRAINT mới chứa đầy đủ danh sách mode bao gồm cả mode mới (`vocabulary_test`).
+- Cập nhật hàm `saveStudyResultToSupabase` trong `studyResultService.js` để ánh xạ chính xác mode từ client sang database.
+
+### Không được lặp lại
+- Luôn đồng bộ và cập nhật các ràng buộc CHECK trên cột `mode` của bảng `study_sessions` và `study_answers` ở phía database mỗi khi giới thiệu một chế độ học hoặc chế độ kiểm tra mới ở phía frontend.
+
+

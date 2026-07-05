@@ -3,15 +3,16 @@
 Hệ thống Web học từ vựng tiếng Anh thông minh tích hợp Supabase backend:
 
 - **Học hôm nay / Tiếp tục học**: Tự động gợi ý lộ trình học tập cá nhân hóa dựa trên lịch ôn Spaced Repetition, danh sách từ hay trả lời sai, và buổi học chưa hoàn thành tiếp theo.
-- **Flashcard Quiz**: Học từ vựng trắc nghiệm phản xạ hoặc gõ từ tiếng Anh theo từng buổi học chống lặp câu hỏi.
+- **Flashcard Quiz**: Học từ vựng trắc nghiệm phản xạ, gõ từ tiếng Anh hoặc nhập nghĩa tiếng Việt theo từng buổi học chống lặp câu hỏi.
 - **Listening Practice**: Luyện nghe phát âm từ vựng và chọn đáp án trắc nghiệm hoặc nhập từ để kiểm tra.
 - **Vocabulary Review**: Xem lại từ vựng, tìm kiếm realtime, lọc theo loại từ (n, v, adj, adv) và nghe phát âm.
 - **Progress Dashboard**: Thống kê số phiên học, số từ đã học, tỷ lệ chính xác trung bình và lịch sử phiên học.
 - **Bảng xếp hạng từ vựng (Leaderboard)**: Đua top vinh danh tiến độ học tập lành mạnh giữa các người học (điểm tính dựa trên số từ đã học, số buổi hoàn thành 100% và độ chính xác). Lọc bỏ tài khoản admin và bảo mật email/UUID cá nhân.
 - **Wrong Words & Due Review**: Chuyên trang ôn luyện tập trung các từ hay trả lời sai và ôn tập Spaced Repetition đến lịch.
-- **Tích xanh hoàn thành**: Chỉ đánh dấu tích xanh hoàn thành buổi học nếu trả lời đúng 100% không làm sai câu nào trong phiên.
+- **Tích xanh hoàn thành**: Chỉ đánh dấu tích xanh hoàn thành buổi học nếu trả lời đúng 100% không làm sai câu nào trong phiên (áp dụng cho mọi chế độ trắc nghiệm, gõ từ tiếng Anh và gõ nghĩa tiếng Việt).
 - **Quản trị viên (Admin Panel)**: Giao diện quản lý thêm, sửa, xóa mềm từ vựng và import/preview tệp CSV dữ liệu trực quan.
 - **Đồng bộ hóa Cloud**: Lưu trữ dữ liệu từ vựng, phiên học và đồng bộ tiến độ học tập qua Supabase. Hỗ trợ Guest học offline fallback CSV.
+- **Kiểm tra từ vựng (Vocabulary Test)**: Chế độ kiểm tra độc lập gồm 4 bài thi định sẵn (Giữa kỳ và Cuối kỳ cho 2 khóa học Nền tảng và TOEIC 1). Giao diện dạng danh sách hai cột trên Desktop (hoặc card-stack trên Mobile) hỗ trợ tự động nhảy focus xuống ô tiếp theo khi nhấn Enter, chấm điểm trên thang 10, hiển thị bảng kết quả chi tiết kèm các bộ lọc câu sai/câu bỏ trống và hỗ trợ lưu kết quả cloud cho tài khoản đã đăng nhập.
 
 ## Cài đặt
 

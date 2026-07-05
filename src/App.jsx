@@ -9,6 +9,7 @@ import { DueReview } from "./components/DueReview.jsx";
 import { WrongWords } from "./components/WrongWords.jsx";
 import AdminVocabularyManager from "./components/AdminVocabularyManager.jsx";
 import { Leaderboard } from "./components/Leaderboard.jsx";
+import { VocabularyTest } from "./components/VocabularyTest.jsx";
 import { getVocabData } from "./utils/vocabDataService.js";
 import { useAuth } from "./context/AuthContext.jsx";
 
@@ -93,6 +94,9 @@ export default function App() {
       )}
       {currentPage === "listeningPractice" && (
         <ListeningPractice cards={cards} onBackHome={() => setCurrentPage("home")} initialCourse={initialCourse} />
+      )}
+      {currentPage === "vocabularyTest" && (
+        <VocabularyTest cards={cards} onBackHome={() => setCurrentPage("home")} onOpenAuth={() => setCurrentPage("auth")} />
       )}
       {currentPage === "auth" && (
         <AuthPanel onBackHome={() => setCurrentPage("home")} />

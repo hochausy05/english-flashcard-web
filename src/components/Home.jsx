@@ -1,5 +1,5 @@
 import { useMemo, useState, useEffect } from "react";
-import { BookOpen, Headphones, GraduationCap, XCircle, Trophy, BookCheck, ArrowRight, Sparkles, Compass, User, LogOut, LogIn, BarChart3, Settings, Menu, X, RefreshCw } from "lucide-react";
+import { BookOpen, Headphones, GraduationCap, XCircle, Trophy, BookCheck, ArrowRight, Sparkles, Compass, User, LogOut, LogIn, BarChart3, Settings, Menu, X, RefreshCw, Calendar } from "lucide-react";
 import { useAuth } from "../context/AuthContext.jsx";
 import { getStudyRecommendation } from "../utils/continueStudyService.js";
 
@@ -291,197 +291,214 @@ export function Home(props) {
 
       {/* 2. Quick Stats Dashboard */}
       <section className="stats-section">
-        <div className="dashboard-stat-card">
-          <div className="dashboard-stat-glow"></div>
-          <span className="stat-number">{stats.courses}</span>
-          <span className="stat-label">Khóa học hiện có</span>
+        <div className="dashboard-stat-card-shell">
+          <div className="dashboard-stat-card">
+            <div className="dashboard-stat-glow"></div>
+            <span className="stat-number">{stats.courses}</span>
+            <span className="stat-label">Khóa học hiện có</span>
+          </div>
         </div>
-        <div className="dashboard-stat-card">
-          <div className="dashboard-stat-glow"></div>
-          <span className="stat-number">{stats.words}+</span>
-          <span className="stat-label">Từ vựng chất lượng</span>
+        <div className="dashboard-stat-card-shell">
+          <div className="dashboard-stat-card">
+            <div className="dashboard-stat-glow"></div>
+            <span className="stat-number">{stats.words}+</span>
+            <span className="stat-label">Từ vựng chất lượng</span>
+          </div>
         </div>
-        <div className="dashboard-stat-card">
-          <div className="dashboard-stat-glow"></div>
-          <span className="stat-number">{stats.sessions}</span>
-          <span className="stat-label">Buổi học được thiết lập</span>
+        <div className="dashboard-stat-card-shell">
+          <div className="dashboard-stat-card">
+            <div className="dashboard-stat-glow"></div>
+            <span className="stat-number">{stats.sessions}</span>
+            <span className="stat-label">Buổi học được thiết lập</span>
+          </div>
         </div>
-        <div className="dashboard-stat-card">
-          <div className="dashboard-stat-glow"></div>
-          <span className="stat-number">3 Chế độ</span>
-          <span className="stat-label">Quiz, Review & Nghe</span>
+        <div className="dashboard-stat-card-shell">
+          <div className="dashboard-stat-card">
+            <div className="dashboard-stat-glow"></div>
+            <span className="stat-number">3 Chế độ</span>
+            <span className="stat-label">Quiz, Review & Nghe</span>
+          </div>
         </div>
       </section>
 
       {/* Personalized Study Recommendation Card */}
       <section className="recommendation-section">
-        <div className="recommendation-card card">
-          <div className="rec-glow-bg"></div>
-          {loadingRec ? (
-            <div className="rec-loading">
-              <RefreshCw className="spinner-icon" size={20} />
-              <span>Đang tìm lộ trình phù hợp...</span>
-            </div>
-          ) : recommendation ? (
-            <div className="rec-content-layout">
-              {recommendation.type === "due" && (
-                <div className="rec-inner-box">
-                  <div className="rec-badge warning">
-                    <RefreshCw size={12} /> Lịch ôn tập hôm nay
+        <div className="recommendation-card-shell">
+          <div className="recommendation-card">
+            <div className="rec-glow-bg"></div>
+            {loadingRec ? (
+              <div className="rec-skeleton">
+                <div className="rec-skeleton-badge"></div>
+                <div className="rec-skeleton-main">
+                  <div className="rec-skeleton-info">
+                    <div className="rec-skeleton-title"></div>
+                    <div className="rec-skeleton-desc"></div>
+                    <div className="rec-skeleton-subtext"></div>
                   </div>
-                  <div className="rec-main-row">
-                    <div className="rec-info-group">
-                      <h3 className="rec-card-title">Học hôm nay</h3>
-                      <p className="rec-card-desc">
-                        Bạn có <strong className="highlight-text">{recommendation.dueCount}</strong> từ đến hạn cần ôn tập hôm nay.
-                      </p>
-                      <p className="rec-card-subtext">
-                        Ôn tập định kỳ giúp ghi nhớ từ vựng dài hạn hơn.
-                      </p>
-                    </div>
-                    <div className="rec-actions-group">
-                      <button className="cta-button primary" onClick={() => onNavigate && onNavigate("dueReview")}>
-                        Ôn hôm nay <ArrowRight size={16} />
-                      </button>
-                    </div>
-                  </div>
+                  <div className="rec-skeleton-button"></div>
                 </div>
-              )}
-
-              {recommendation.type === "wrong" && (
-                <div className="rec-inner-box">
-                  <div className="rec-badge danger">
-                    <XCircle size={12} /> Khắc phục điểm yếu
-                  </div>
-                  <div className="rec-main-row">
-                    <div className="rec-info-group">
-                      <h3 className="rec-card-title">Học hôm nay</h3>
-                      <p className="rec-card-desc">
-                        Bạn có <strong className="highlight-text">{recommendation.wrongCount}</strong> từ hay trả lời sai nên luyện tập lại.
-                      </p>
-                      <p className="rec-card-subtext">
-                        Tập trung ôn luyện lại những từ hay trả lời sai để cải thiện phản xạ.
-                      </p>
+              </div>
+            ) : recommendation ? (
+              <div className="rec-content-layout">
+                {recommendation.type === "due" && (
+                  <div className="rec-inner-box">
+                    <div className="rec-badge warning">
+                      <RefreshCw size={12} /> Lịch ôn tập hôm nay
                     </div>
-                    <div className="rec-actions-group">
-                      <button className="cta-button primary" onClick={() => onOpenWrongWords && onOpenWrongWords()}>
-                        Ôn từ sai <ArrowRight size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {recommendation.type === "continue" && recommendation.continueData && (
-                <div className="rec-inner-box">
-                  <div className="rec-badge primary">
-                    <Compass size={12} /> Lộ trình học tập cá nhân
-                  </div>
-                  <div className="rec-main-row">
-                    <div className="rec-info-group">
-                      <h3 className="rec-card-title">Tiếp tục học</h3>
-                      {recommendation.continueData.isCourseCompleted ? (
-                        <>
-                          <p className="rec-card-desc">
-                            Bạn đã hoàn thành khóa học <strong className="highlight-text">{recommendation.continueData.courseName}</strong>! 🎉
-                          </p>
-                          <p className="rec-card-subtext">
-                            Hãy chuyển sang khóa học tiếp theo hoặc ôn luyện lại các buổi cũ.
-                          </p>
-                        </>
-                      ) : (
-                        <>
-                          <p className="rec-card-desc">
-                            Gợi ý tiếp theo: <strong className="highlight-text">{recommendation.continueData.courseName} - {recommendation.continueData.lessonName}</strong>
-                          </p>
-                          <p className="rec-card-subtext">
-                            Bài học gồm <strong className="highlight-count">{recommendation.continueData.totalWords}</strong> từ vựng.
-                          </p>
-                        </>
-                      )}
-
-                      {/* Progress Bar */}
-                      <div className="rec-progress-container">
-                        <div className="rec-progress-info">
-                          <span>Tiến độ khóa học</span>
-                          <strong className="rec-progress-text">
-                            {recommendation.continueData.completedLessons}/{recommendation.continueData.totalLessons} buổi hoàn thành
-                          </strong>
-                        </div>
-                        <div className="rec-progress-bar-bg">
-                          <div
-                            className="rec-progress-bar-fill"
-                            style={{
-                              width: `${
-                                recommendation.continueData.totalLessons > 0
-                                  ? Math.max(
-                                      3,
-                                      (recommendation.continueData.completedLessons /
-                                        recommendation.continueData.totalLessons) *
-                                        100
-                                    )
-                                  : 3
-                              }%`,
-                            }}
-                          ></div>
-                        </div>
+                    <div className="rec-main-row">
+                      <div className="rec-info-group">
+                        <h3 className="rec-card-title">Học hôm nay</h3>
+                        <p className="rec-card-desc">
+                          Bạn có <strong className="highlight-text">{recommendation.dueCount}</strong> từ đến hạn cần ôn tập hôm nay.
+                        </p>
+                        <p className="rec-card-subtext">
+                          Ôn tập định kỳ giúp ghi nhớ từ vựng dài hạn hơn.
+                        </p>
+                      </div>
+                      <div className="rec-actions-group">
+                        <button className="cta-button primary" onClick={() => onNavigate && onNavigate("dueReview")}>
+                          Ôn hôm nay <ArrowRight size={16} />
+                        </button>
                       </div>
                     </div>
+                  </div>
+                )}
 
-                    <div className="rec-actions-group">
-                      {recommendation.continueData.isCourseCompleted ? (
-                        <button
-                          className="cta-button primary"
-                          onClick={() =>
-                            onOpenFlashcard &&
-                            onOpenFlashcard(
-                              recommendation.continueData.courseCode === "foundation"
-                                ? "toeic1"
-                                : "foundation"
-                            )
-                          }
-                        >
-                          Học khóa tiếp theo <ArrowRight size={16} />
+                {recommendation.type === "wrong" && (
+                  <div className="rec-inner-box">
+                    <div className="rec-badge danger">
+                      <XCircle size={12} /> Khắc phục điểm yếu
+                    </div>
+                    <div className="rec-main-row">
+                      <div className="rec-info-group">
+                        <h3 className="rec-card-title">Học hôm nay</h3>
+                        <p className="rec-card-desc">
+                          Bạn có <strong className="highlight-text">{recommendation.wrongCount}</strong> từ hay trả lời sai nên luyện tập lại.
+                        </p>
+                        <p className="rec-card-subtext">
+                          Tập trung ôn luyện lại những từ hay trả lời sai để cải thiện phản xạ.
+                        </p>
+                      </div>
+                      <div className="rec-actions-group">
+                        <button className="cta-button primary" onClick={() => onOpenWrongWords && onOpenWrongWords()}>
+                          Ôn từ sai <ArrowRight size={16} />
                         </button>
-                      ) : (
-                        <button
-                          className="cta-button primary"
-                          onClick={() =>
-                            onOpenFlashcard &&
-                            onOpenFlashcard(
-                              recommendation.continueData.courseCode,
-                              recommendation.continueData.lessonNumber
-                            )
-                          }
-                        >
-                          Học tiếp <ArrowRight size={16} />
-                        </button>
-                      )}
-                      {!recommendation.continueData.isCourseCompleted && (
-                        <button
-                          className="cta-button secondary text-btn"
-                          onClick={() => onOpenFlashcard && onOpenFlashcard(recommendation.continueData.courseCode)}
-                        >
-                          Chọn buổi khác
-                        </button>
-                      )}
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              {!user && (
-                <div className="rec-guest-footer-bar">
-                  <span className="guest-footer-text">💡 Đăng nhập để lưu và tiếp tục lộ trình học tập của riêng bạn.</span>
-                  <button className="rec-guest-login-btn" onClick={onOpenAuth}>
-                    Đăng nhập ngay
-                  </button>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="rec-error">Không thể xác định lộ trình học.</div>
-          )}
+                {recommendation.type === "continue" && recommendation.continueData && (
+                  <div className="rec-inner-box">
+                    <div className="rec-badge primary">
+                      <Compass size={12} /> Lộ trình học tập cá nhân
+                    </div>
+                    <div className="rec-main-row">
+                      <div className="rec-info-group">
+                        <h3 className="rec-card-title">Tiếp tục học</h3>
+                        {recommendation.continueData.isCourseCompleted ? (
+                          <>
+                            <p className="rec-card-desc">
+                              Bạn đã hoàn thành khóa học <strong className="highlight-text">{recommendation.continueData.courseName}</strong>! 🎉
+                            </p>
+                            <p className="rec-card-subtext">
+                              Hãy chuyển sang khóa học tiếp theo hoặc ôn luyện lại các buổi cũ.
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="rec-card-desc">
+                              Gợi ý tiếp theo: <strong className="highlight-text">{recommendation.continueData.courseName} - {recommendation.continueData.lessonName}</strong>
+                            </p>
+                            <p className="rec-card-subtext">
+                              Bài học gồm <strong className="highlight-count">{recommendation.continueData.totalWords}</strong> từ vựng.
+                            </p>
+                          </>
+                        )}
+
+                        {/* Progress Bar */}
+                        <div className="rec-progress-container">
+                          <div className="rec-progress-info">
+                            <span>Tiến độ khóa học</span>
+                            <strong className="rec-progress-text">
+                              {recommendation.continueData.completedLessons}/{recommendation.continueData.totalLessons} buổi hoàn thành
+                            </strong>
+                          </div>
+                          <div className="rec-progress-bar-bg">
+                            <div
+                              className="rec-progress-bar-fill"
+                              style={{
+                                width: `${
+                                  recommendation.continueData.totalLessons > 0
+                                    ? Math.max(
+                                        3,
+                                        (recommendation.continueData.completedLessons /
+                                          recommendation.continueData.totalLessons) *
+                                          100
+                                      )
+                                    : 3
+                                }%`,
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rec-actions-group">
+                        {recommendation.continueData.isCourseCompleted ? (
+                          <button
+                            className="cta-button primary"
+                            onClick={() =>
+                              onOpenFlashcard &&
+                              onOpenFlashcard(
+                                recommendation.continueData.courseCode === "foundation"
+                                  ? "toeic1"
+                                  : "foundation"
+                              )
+                            }
+                          >
+                            Học khóa tiếp theo <ArrowRight size={16} />
+                          </button>
+                        ) : (
+                          <button
+                            className="cta-button primary"
+                            onClick={() =>
+                              onOpenFlashcard &&
+                              onOpenFlashcard(
+                                recommendation.continueData.courseCode,
+                                recommendation.continueData.lessonNumber
+                              )
+                            }
+                          >
+                            Học tiếp <ArrowRight size={16} />
+                          </button>
+                        )}
+                        {!recommendation.continueData.isCourseCompleted && (
+                          <button
+                            className="cta-button secondary text-btn"
+                            onClick={() => onOpenFlashcard && onOpenFlashcard(recommendation.continueData.courseCode)}
+                          >
+                            Chọn buổi khác
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {!user && (
+                  <div className="rec-guest-footer-bar">
+                    <span className="guest-footer-text">💡 Đăng nhập để lưu và tiếp tục lộ trình học tập của riêng bạn.</span>
+                    <button className="rec-guest-login-btn" onClick={onOpenAuth}>
+                      Đăng nhập ngay
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="rec-error">Không thể xác định lộ trình học.</div>
+            )}
+          </div>
         </div>
       </section>
 
@@ -494,7 +511,7 @@ export function Home(props) {
 
         <div className="features-grid">
           {/* Flashcard Quiz */}
-          <div className="feature-card active-card bento-2col">
+          <div className="feature-card active-card">
             <div className="feature-card-content">
               <div className="feature-icon-wrapper quiz-icon">
                 <BookOpen size={24} />
@@ -544,22 +561,24 @@ export function Home(props) {
             </button>
           </div>
 
-          <div className="feature-card disabled-card bento-2col">
+          {/* Vocabulary Test */}
+          <div className="feature-card active-card">
             <div className="feature-card-content">
-              <div className="feature-icon-wrapper coming-icon">
-                <GraduationCap size={24} />
+              <div className="feature-icon-wrapper review-icon" style={{ background: "rgba(5, 150, 105, 0.08)", color: "var(--color-emerald)" }}>
+                <BookCheck size={24} />
               </div>
-              <span className="badge coming-soon">Sắp ra mắt</span>
-              <h3>Grammar Practice</h3>
+              <span className="badge active" style={{ background: "var(--color-emerald-bg)", color: "var(--color-emerald)", border: "1px solid var(--color-emerald-border)" }}>Kiểm tra</span>
+              <h3>Kiểm tra</h3>
               <p className="feature-desc">
-                Học các cấu trúc ngữ pháp thông dụng qua ví dụ thực tế và bài tập điền khuyết.
+                Làm bài kiểm tra giữa kỳ/cuối kỳ bằng cách nhập nghĩa tiếng Việt cho từng từ.
               </p>
             </div>
-            <button className="feature-button disabled-btn" disabled>
-              Sắp ra mắt
+            <button className="feature-button primary" onClick={() => onNavigate("vocabularyTest")}>
+              Vào kiểm tra
             </button>
           </div>
 
+          {/* Wrong Words */}
           <div className="feature-card active-card">
             <div className="feature-card-content">
               <div className="feature-icon-wrapper wrong-words-icon">
@@ -576,6 +595,7 @@ export function Home(props) {
             </button>
           </div>
 
+          {/* Leaderboard */}
           <div className="feature-card active-card">
             <div className="feature-card-content">
               <div className="feature-icon-wrapper leaderboard-icon">
@@ -589,6 +609,50 @@ export function Home(props) {
             </div>
             <button className="feature-button primary" onClick={() => onNavigate("leaderboard")}>
               Xem xếp hạng
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 3b. Upcoming Features (Sắp ra mắt) */}
+      <section className="upcoming-section">
+        <div className="section-header">
+          <h2>Sắp ra mắt</h2>
+          <p>Những tính năng đang được phát triển để nâng cao trải nghiệm học tập của bạn.</p>
+        </div>
+
+        <div className="upcoming-grid">
+          {/* Grammar Practice */}
+          <div className="feature-card disabled-card">
+            <div className="feature-card-content">
+              <div className="feature-icon-wrapper coming-icon">
+                <GraduationCap size={24} />
+              </div>
+              <span className="badge coming-soon">Sắp ra mắt</span>
+              <h3>Grammar Practice</h3>
+              <p className="feature-desc">
+                Học các cấu trúc ngữ pháp thông dụng qua ví dụ thực tế và bài tập điền khuyết.
+              </p>
+            </div>
+            <button className="feature-button disabled-btn" disabled>
+              Sắp ra mắt
+            </button>
+          </div>
+
+          {/* Daily Challenge */}
+          <div className="feature-card disabled-card">
+            <div className="feature-card-content">
+              <div className="feature-icon-wrapper coming-icon">
+                <Calendar size={24} />
+              </div>
+              <span className="badge coming-soon">Sắp ra mắt</span>
+              <h3>Daily Challenge</h3>
+              <p className="feature-desc">
+                Thử thách từ vựng hàng ngày giúp duy trì thói quen học tập và nhận điểm thưởng.
+              </p>
+            </div>
+            <button className="feature-button disabled-btn" disabled>
+              Sắp ra mắt
             </button>
           </div>
         </div>

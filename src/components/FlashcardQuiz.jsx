@@ -27,6 +27,46 @@ function normalizeTypingAnswer(value) {
     .replace(/\s+/g, " ");
 }
 
+// Hàm normalize đáp án tiếng Việt
+function cleanVietnameseAnswer(str) {
+  return String(str || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .replace(/^[.,\/#!$%\^&\*;:{}=\-_`~()?]+|[.,\/#!$%\^&\*;:{}=\-_`~()?]+$/g, "")
+    .trim();
+}
+
+function checkVietnameseAnswer(userVal, correctVal) {
+  if (!userVal || !correctVal) return false;
+  
+  const cleanedUser = cleanVietnameseAnswer(userVal);
+  
+  // 1. Khớp chính xác hoàn toàn sau khi làm sạch
+  if (cleanedUser === cleanVietnameseAnswer(correctVal)) {
+    return true;
+  }
+
+  // 2. Khớp sau khi loại bỏ mọi dấu câu trung gian để chấp nhận gõ không dấu câu
+  const removePunctuation = (str) => {
+    return str.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()?|]/g, " ").replace(/\s+/g, " ").trim();
+  };
+  if (cleanVietnameseAnswer(removePunctuation(userVal)) === cleanVietnameseAnswer(removePunctuation(correctVal))) {
+    return true;
+  }
+
+  // 3. Khớp một trong các nghĩa phân tách bởi dấu phẩy, chấm phẩy, xuyệt, gạch đứng, xuống dòng
+  const parts = correctVal.split(/[,\/;|]|\r?\n/);
+  if (parts.length > 1) {
+    return parts.some(part => {
+      const cleanedPart = cleanVietnameseAnswer(part);
+      return cleanedPart === cleanedUser || cleanVietnameseAnswer(removePunctuation(part)) === cleanVietnameseAnswer(removePunctuation(userVal));
+    });
+  }
+
+  return false;
+}
+
 // Hàm ẩn từ cần đoán trong câu ví dụ
 function maskWordInExample(example, word) {
   if (!example || !word) return example || "";
@@ -62,9 +102,10 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
     return saved !== null ? saved === "true" : true;
   });
 
-  const [quizMode, setQuizMode] = useState("multipleChoice"); // "multipleChoice" | "typing"
+  const [quizMode, setQuizMode] = useState("multipleChoice"); // "multipleChoice" | "typing" | "vietnamese_typing"
   const [typedAnswer, setTypedAnswer] = useState("");
   const [isAnsweredState, setIsAnsweredState] = useState(false);
+  const [isAutoNexting, setIsAutoNexting] = useState(false);
   const inputRef = useRef(null);
   const autoNextTimerRef = useRef(null);
 
@@ -98,7 +139,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
 
   // Tự động focus vào ô input khi chuyển sang câu mới ở chế độ gõ
   useEffect(() => {
-    if (quizStatus === "playing" && quizMode === "typing" && inputRef.current) {
+    if (quizStatus === "playing" && (quizMode === "typing" || quizMode === "vietnamese_typing") && inputRef.current) {
       setTimeout(() => {
         if (inputRef.current) {
           inputRef.current.focus();
@@ -295,6 +336,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
     setSelectedAnswer(null);
     setTypedAnswer("");
     setIsAnsweredState(false);
+    setIsAutoNexting(false);
     setQuizStatus("playing");
   }
 
@@ -340,12 +382,18 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
 
   // Kiểm tra đáp án nhập (Chế độ gõ)
   function handleCheckAnswer() {
-    if (isAnswered) return;
+    if (isAnswered || isAutoNexting) return;
 
     const trimmed = typedAnswer.trim();
-    const normalizedUser = normalizeTypingAnswer(trimmed);
-    const normalizedCorrect = normalizeTypingAnswer(currentQuestion.word);
-    const isCorrect = normalizedUser === normalizedCorrect;
+    let isCorrect = false;
+
+    if (quizMode === "typing") {
+      const normalizedUser = normalizeTypingAnswer(trimmed);
+      const normalizedCorrect = normalizeTypingAnswer(currentQuestion.word);
+      isCorrect = normalizedUser === normalizedCorrect;
+    } else if (quizMode === "vietnamese_typing") {
+      isCorrect = checkVietnameseAnswer(trimmed, currentQuestion.answer);
+    }
 
     if (soundEnabled) {
       playFeedbackSound(isCorrect);
@@ -365,12 +413,23 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
         ipa: currentQuestion.ipa,
         example: currentQuestion.example,
         typedAnswer: trimmed,
-        correctAnswer: currentQuestion.word,
+        correctAnswer: quizMode === "typing" ? currentQuestion.word : currentQuestion.answer,
         isCorrect: isCorrect,
         audio: currentQuestion.audio,
-        mode: "typing",
+        mode: quizMode,
       },
     ]);
+
+    // Tự động chuyển câu nếu trả lời đúng trong chế độ Nhập nghĩa tiếng Việt
+    if (isCorrect && quizMode === "vietnamese_typing") {
+      setIsAutoNexting(true);
+      if (autoNextTimerRef.current) {
+        clearTimeout(autoNextTimerRef.current);
+      }
+      autoNextTimerRef.current = setTimeout(() => {
+        handleNext();
+      }, 1000);
+    }
   }
 
   // Chuyển câu hỏi hoặc kết thúc
@@ -378,6 +437,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
     if (autoNextTimerRef.current) {
       clearTimeout(autoNextTimerRef.current);
     }
+    setIsAutoNexting(false);
     if (currentIndex + 1 >= questionQueue.length) {
       setQuizStatus("finished");
     } else {
@@ -583,6 +643,17 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
                   <span className="quiz-mode-desc">Nhìn nghĩa tiếng Việt và nhập từ tiếng Anh</span>
                 </div>
               </button>
+
+              <button
+                type="button"
+                className={`quiz-mode-btn ${quizMode === "vietnamese_typing" ? "active" : ""}`}
+                onClick={() => setQuizMode("vietnamese_typing")}
+              >
+                <div className="quiz-mode-info">
+                  <span className="quiz-mode-title">Nhập nghĩa tiếng Việt</span>
+                  <span className="quiz-mode-desc">Nhìn từ tiếng Anh và nhập nghĩa tiếng Việt</span>
+                </div>
+              </button>
             </div>
           </div>
 
@@ -640,7 +711,9 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
 
     const isCorrect = quizMode === "multipleChoice"
       ? selectedAnswer === currentQuestion.answer
-      : normalizeTypingAnswer(typedAnswer) === normalizeTypingAnswer(currentQuestion.word);
+      : (quizMode === "typing"
+          ? normalizeTypingAnswer(typedAnswer) === normalizeTypingAnswer(currentQuestion.word)
+          : checkVietnameseAnswer(typedAnswer, currentQuestion.answer));
 
     return (
       <div className="quiz-flow-container">
@@ -736,7 +809,7 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
                 </div>
               )}
             </>
-          ) : (
+          ) : quizMode === "typing" ? (
             // Chế độ gõ nhập tiếng Anh
             <div className="typing-quiz-container">
               <div className="typing-word-box">
@@ -830,6 +903,108 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
                 </div>
               )}
             </div>
+          ) : (
+            // Chế độ gõ nhập nghĩa tiếng Việt (vietnamese_typing)
+            <div className="typing-quiz-container">
+              <div className="word-box">
+                <div className="word-box-inner">
+                  <button
+                    className="speaker"
+                    onClick={() => speakWord(currentQuestion.word, currentQuestion.audio)}
+                    disabled={isAutoNexting}
+                  >
+                    <Volume2 size={26} />
+                  </button>
+                  <div>
+                    <h2>{currentQuestion.word}</h2>
+                    <p className="ipa">
+                      {currentQuestion.pos ? (
+                        currentQuestion.ipa ? `${currentQuestion.pos} · ${currentQuestion.ipa}` : currentQuestion.pos
+                      ) : (
+                        currentQuestion.ipa || "Chưa có phiên âm"
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {currentQuestion.example && (
+                <p className="example">Ví dụ: “{currentQuestion.example}”</p>
+              )}
+
+              <div className="typing-input-wrapper">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  className="typing-input"
+                  placeholder="Nhập nghĩa tiếng Việt..."
+                  value={typedAnswer}
+                  onChange={(e) => setTypedAnswer(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      if (isAutoNexting) return;
+                      if (!isAnswered) {
+                        handleCheckAnswer();
+                      } else {
+                        if (!isCorrect) {
+                          handleNext();
+                        }
+                      }
+                    }
+                  }}
+                  disabled={isAnswered || isAutoNexting}
+                  autoComplete="off"
+                  autoCapitalize="off"
+                  autoCorrect="off"
+                  spellCheck="false"
+                />
+                
+                {!isAnswered && (
+                  <button
+                    className="primary-button check-btn"
+                    onClick={handleCheckAnswer}
+                    disabled={!typedAnswer.trim() || isAutoNexting}
+                  >
+                    Kiểm tra
+                  </button>
+                )}
+              </div>
+
+              {isAnswered && (
+                <div className="typing-result-feedback card">
+                  <div className="feedback-status-header">
+                    {isCorrect ? (
+                      <span className="status-label correct"><CheckCircle2 size={20} /> Chính xác!</span>
+                    ) : (
+                      <span className="status-label wrong"><XCircle size={20} /> Chưa đúng.</span>
+                    )}
+                  </div>
+
+                  <div className="correct-word-details">
+                    <span className="label">Đáp án đúng:</span>
+                    <div className="correct-word-row">
+                      <span className="word-text" style={{ fontSize: '18px', color: '#101828', fontWeight: 'bold' }}>{currentQuestion.answer}</span>
+                    </div>
+                  </div>
+
+                  {!isCorrect && (
+                    <div className="user-typed-details">
+                      <span className="label">Bạn đã nhập:</span>
+                      <span className="user-typed-text">{typedAnswer || "(Trống)"}</span>
+                    </div>
+                  )}
+
+                  {!isCorrect && (
+                    <div className="feedback-actions">
+                      <button className="primary-button next-btn" onClick={handleNext} disabled={isAutoNexting}>
+                        {currentIndex + 1 >= questionQueue.length ? "Xem kết quả" : "Tiếp tục"}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </section>
       </div>
@@ -888,8 +1063,8 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
                     <tr>
                       <th>Từ vựng</th>
                       <th>Loại từ</th>
-                      <th>{quizMode === "typing" ? "Nghĩa tiếng Việt" : "Nghĩa chuẩn"}</th>
-                      <th>{quizMode === "typing" ? "Kết quả nhập" : "Lựa chọn của bạn"}</th>
+                      <th>{quizMode === "typing" ? "Nghĩa tiếng Việt" : (quizMode === "vietnamese_typing" ? "Nghĩa đúng" : "Nghĩa chuẩn")}</th>
+                      <th>{(quizMode === "typing" || quizMode === "vietnamese_typing") ? "Kết quả nhập" : "Lựa chọn của bạn"}</th>
                       <th>Nghe</th>
                     </tr>
                   </thead>
@@ -904,13 +1079,18 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
                         </td>
                         <td className="review-pos">{item.pos || ""}</td>
                         <td className="review-correct">
-                          {item.mode === "typing" ? item.answer : item.correctAnswer}
+                          {item.mode === "typing" ? item.answer : (item.mode === "vietnamese_typing" ? item.correctAnswer : item.correctAnswer)}
                         </td>
                         <td>
                           {item.mode === "typing" ? (
                             <div className="review-typing-compare">
                               <span className="review-wrong" style={{ display: 'block' }}>Bạn nhập: <code className="typed-code">{item.typedAnswer || "(Trống)"}</code></span>
                               <span className="review-correct-label" style={{ display: 'block', color: '#027a48', fontWeight: '600', marginTop: '4px' }}>Đáp án đúng: <strong>{item.word}</strong></span>
+                            </div>
+                          ) : item.mode === "vietnamese_typing" ? (
+                            <div className="review-typing-compare">
+                              <span className="review-wrong" style={{ display: 'block' }}>Bạn nhập: <code className="typed-code">{item.typedAnswer || "(Trống)"}</code></span>
+                              <span className="review-correct-label" style={{ display: 'block', color: '#027a48', fontWeight: '600', marginTop: '4px' }}>Đáp án đúng: <strong>{item.correctAnswer}</strong></span>
                             </div>
                           ) : (
                             <span className="review-wrong">{item.selectedAnswer || "(Bỏ qua)"}</span>
@@ -950,8 +1130,8 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
                     
                     <div className="review-card-body">
                       <div className="review-card-detail">
-                        <span className="detail-label">{item.mode === "typing" ? "Nghĩa tiếng Việt:" : "Nghĩa đúng:"}</span>
-                        <span className="detail-val review-correct">{item.mode === "typing" ? item.answer : item.correctAnswer}</span>
+                        <span className="detail-label">{item.mode === "typing" ? "Nghĩa tiếng Việt:" : (item.mode === "vietnamese_typing" ? "Đáp án đúng:" : "Nghĩa đúng:")}</span>
+                        <span className="detail-val review-correct">{item.mode === "typing" ? item.answer : (item.mode === "vietnamese_typing" ? item.correctAnswer : item.correctAnswer)}</span>
                       </div>
                       <div className="review-card-detail">
                         {item.mode === "typing" ? (
@@ -963,6 +1143,17 @@ export function FlashcardQuiz({ cards, onBackHome, initialCourse, initialLesson 
                             <div>
                               <span className="detail-label" style={{ color: '#027a48' }}>Đáp án đúng:</span>
                               <span className="detail-val" style={{ marginLeft: '4px', color: '#027a48', fontWeight: 'bold' }}>{item.word}</span>
+                            </div>
+                          </div>
+                        ) : item.mode === "vietnamese_typing" ? (
+                          <div className="review-typing-compare-mobile" style={{ width: '100%' }}>
+                            <div style={{ marginBottom: '4px' }}>
+                              <span className="detail-label">Bạn nhập:</span>
+                              <span className="detail-val review-wrong" style={{ marginLeft: '4px' }}>{item.typedAnswer || "(Trống)"}</span>
+                            </div>
+                            <div>
+                              <span className="detail-label" style={{ color: '#027a48' }}>Đáp án đúng:</span>
+                              <span className="detail-val" style={{ marginLeft: '4px', color: '#027a48', fontWeight: 'bold' }}>{item.correctAnswer}</span>
                             </div>
                           </div>
                         ) : (

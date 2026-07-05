@@ -57,7 +57,7 @@
 .podium-card {
   position: relative;
   overflow: hidden;
-  padding: 20px;
+  padding: 24px 20px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -66,27 +66,59 @@
   transition: all var(--transition-smooth);
 }
 
+.podium-card::before {
+  position: absolute;
+  right: 14px;
+  bottom: -15px;
+  font-size: 110px;
+  font-weight: 900;
+  line-height: 1;
+  font-family: var(--font-display);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.podium-card.rank-1::before {
+  content: '1';
+  color: rgba(233, 196, 106, 0.12);
+}
+
+.podium-card.rank-2::before {
+  content: '2';
+  color: rgba(184, 192, 204, 0.1);
+}
+
+.podium-card.rank-3::before {
+  content: '3';
+  color: rgba(221, 141, 84, 0.1);
+}
+
+.podium-card > * {
+  position: relative;
+  z-index: 1;
+}
+
 .podium-card:hover {
-  transform: translateY(-4px);
+  transform: translateY(-5px);
   box-shadow: var(--shadow-lg);
 }
 
 .podium-card.rank-1 {
-  background: white;
-  border: 1.5px solid #e9c46a;
-  box-shadow: 0 8px 24px rgba(233, 196, 106, 0.08);
+  background: linear-gradient(160deg, #fffdf5 0%, #fffbeb 100%);
+  border: 1.5px solid rgba(233, 196, 106, 0.4);
+  box-shadow: 0 8px 28px rgba(233, 196, 106, 0.14), 0 2px 8px rgba(233, 196, 106, 0.08);
 }
 
 .podium-card.rank-2 {
-  background: white;
-  border: 1.5px solid #b8c0cc;
-  box-shadow: 0 8px 24px rgba(184, 192, 204, 0.08);
+  background: linear-gradient(160deg, #f9fafb 0%, #f3f4f6 100%);
+  border: 1.5px solid rgba(184, 192, 204, 0.4);
+  box-shadow: 0 8px 24px rgba(184, 192, 204, 0.1);
 }
 
 .podium-card.rank-3 {
-  background: white;
-  border: 1.5px solid #dd8d54;
-  box-shadow: 0 8px 24px rgba(221, 141, 84, 0.08);
+  background: linear-gradient(160deg, #fffaf6 0%, #fff4ec 100%);
+  border: 1.5px solid rgba(221, 141, 84, 0.35);
+  box-shadow: 0 8px 24px rgba(221, 141, 84, 0.1);
 }
 
 .podium-glow {
@@ -96,12 +128,12 @@
   height: 120px;
   border-radius: 50%;
   filter: blur(40px);
-  opacity: 0.15;
+  opacity: 0.22;
   pointer-events: none;
 }
 
 .rank-1 .podium-glow { background-color: var(--color-warning); }
-.rank-2 .podium-glow { background-color: #64748b; }
+.rank-2 .podium-glow { background-color: #64748b; opacity: 0.14; }
 .rank-3 .podium-glow { background-color: #c2410c; }
 
 .podium-rank-tag {
@@ -500,29 +532,49 @@
 
 /* Error State */
 .leaderboard-error {
-  padding: 40px 20px;
+  padding: 48px 20px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
   border-radius: var(--radius-lg);
-  border: 1px solid var(--color-border);
+  border: 1px solid var(--color-error-border);
+  background: var(--color-error-bg);
+}
+
+.error-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: white;
+  border: 1px solid var(--color-error-border);
+  display: grid;
+  place-items: center;
+  color: var(--color-error);
 }
 
 .error-icon {
-  font-size: 40px;
+  font-size: 28px;
 }
 
 .leaderboard-error p {
-  color: var(--color-error);
+  color: var(--color-error-hover);
   font-weight: 600;
+  font-size: 15px;
+  margin: 0;
+}
+
+.leaderboard-error h3 {
+  color: var(--color-error-hover);
+  font-size: 17px;
+  font-weight: 800;
   margin: 0;
 }
 
 /* Empty State */
 .leaderboard-empty {
-  padding: 40px 20px;
+  padding: 48px 20px;
   text-align: center;
   display: flex;
   flex-direction: column;
@@ -530,21 +582,37 @@
   gap: 16px;
   border-radius: var(--radius-lg);
   border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle);
+}
+
+.empty-icon-wrapper {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: white;
+  border: 1px solid var(--color-border);
+  display: grid;
+  place-items: center;
+  color: var(--color-text-muted);
 }
 
 .empty-icon {
-  font-size: 40px;
+  font-size: 28px;
 }
 
 .leaderboard-empty h3 {
   font-size: 18px;
   font-weight: 800;
+  color: var(--color-text);
   margin: 0;
 }
 
 .leaderboard-empty p {
   color: var(--color-text-secondary);
+  font-size: 14px;
+  line-height: 1.55;
   margin: 0;
+  max-width: 340px;
 }
 
 /* Button & Nav Styling */

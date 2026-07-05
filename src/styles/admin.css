@@ -216,9 +216,10 @@
   overflow-x: auto;
   overflow-y: auto;
   max-height: 70vh;
-  border-radius: 28px;
-  border: 1px solid rgba(99, 115, 145, 0.12);
+  border-radius: var(--radius-lg);
+  border: 1px solid rgba(99, 115, 145, 0.08);
   background: white;
+  box-shadow: 0 10px 30px -12px rgba(26, 49, 103, 0.06);
 }
 
 .admin-vocab-table {

@@ -53,6 +53,10 @@ export async function saveStudyResultToSupabase({
     mappedMode = "typing";
   } else if (mode === "listening") {
     mappedMode = "listening";
+  } else if (mode === "vietnamese_typing") {
+    mappedMode = "vietnamese_typing";
+  } else if (mode === "vocabulary_test") {
+    mappedMode = "vocabulary_test";
   } else if (mode === "wrong_words" || mode === "wrong_review") {
     mappedMode = mode;
   } else {
@@ -229,6 +233,10 @@ export async function saveStudyResultToSupabase({
           promptText = "listening";
           userAnswer = item.typedAnswer || item.selectedAnswer || "";
           correctAnswer = item.word || "";
+        } else if (mappedMode === "vietnamese_typing" || mappedMode === "vocabulary_test") {
+          promptText = item.word || "";
+          userAnswer = item.typedAnswer || "";
+          correctAnswer = item.answer || item.correctAnswer || "";
         } else {
           promptText = item.word || "";
           userAnswer = item.typedAnswer || item.selectedAnswer || "";

@@ -37,6 +37,10 @@ function formatMode(mode) {
       return "Nghe";
     case "due_review":
       return "Ôn tập";
+    case "vietnamese_typing":
+      return "Nhập nghĩa tiếng Việt";
+    case "vocabulary_test":
+      return "Kiểm tra từ vựng";
     default:
       return mode || "—";
   }

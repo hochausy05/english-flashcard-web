@@ -18,6 +18,184 @@ Mỗi lần Antigravity/AI sửa xong code, phải thêm một mục mới ở t
 ### Ghi chú
 - ...
 ```
+## 2026-07-06 - Tích hợp Bảng điều hướng câu hỏi cho Màn kiểm tra từ vựng
+
+### Đã làm
+- **VocabularyTest.jsx**:
+  - Thêm state `activeQuestionIndex` và `showMobileNav` phục vụ theo dõi câu đang xem và đóng/mở drawer di động.
+  - Triển khai hàm `scrollToQuestion(index)` hỗ trợ scroll smooth đến dòng bảng (Desktop) hoặc card (Mobile), tự động reset filter về "Tất cả" nếu câu hỏi chọn bị ẩn trên màn kết quả, và đặt focus vào input nếu đang làm bài.
+  - Gán ID neo cho các dòng bảng và thẻ card để định vị chính xác vị trí scroll.
+  - Gán sự kiện `onFocus` vào input để đồng bộ trạng thái active lên bảng câu hỏi khi người học tab hoặc nhấp chuột vào ô bất kỳ.
+  - Nâng cấp điều hướng Enter gõ từ nhảy dòng bằng cách gọi `scrollToQuestion(idx + 1)` thay vì chỉ focus thô sơ.
+  - Tái cấu trúc cấu trúc HTML: bọc bảng thi và list mobile vào layout wrapper chia 2 cột, thêm sidebar `.test-question-sidebar` bên trái trên Desktop, tích hợp mobile drawer overlay và nút kích hoạt Bản đồ câu.
+- **vocabularyTest.css**:
+  - Thiết kế responsive layout grid chia 2 cột trên Desktop (sidebar 240px, main content chiếm phần còn lại) và 1 cột trên Mobile.
+  - Định dạng sidebar sticky `top: 96px` bám theo màn hình cuộn.
+  - Thiết lập vùng cuộn số `.test-sidebar-grid` có `max-height: 380px` và custom scrollbar để hiển thị gọn gàng các bài thi dài.
+  - Định nghĩa style và màu sắc ô số câu hỏi `.test-nav-box` với đủ các trạng thái: chưa điền (xám nhạt), đã điền (ngọc lục bảo nhạt), active (nền indigo, shadow ring), đúng (success-bg), sai (error-bg), bỏ trống (gray-bg).
+  - Thêm styling cho nút toggle, overlay mờ và drawer di động trượt từ dưới lên cho Mobile.
+  - Thêm style highlight khi active dòng table hoặc card trong màn kết quả.
+
+### File đã sửa
+- [src/components/VocabularyTest.jsx](file:///d:/VIBE/english-flashcard-web/src/components/VocabularyTest.jsx)
+- [src/styles/vocabularyTest.css](file:///d:/VIBE/english-flashcard-web/src/styles/vocabularyTest.css)
+
+### Ghi chú
+- Chạy lệnh `npm run build` thành công, kiểm thử tự động xác nhận tính năng scroll và đổi trạng thái hoạt động chính xác trên cả Desktop lẫn Mobile.
+
+## 2026-07-06 - Thiết kế lại giao diện và layout grid cho “Chế độ học tập”
+
+### Đã làm
+- **Home.jsx**:
+  - Restructure lại grid card trong section "Chế độ học tập", loại bỏ class `bento-2col` khỏi card Flashcard Quiz để đưa tất cả card active về chung một hệ grid đồng kích thước.
+  - Sắp xếp thứ tự 6 card active chính trong section "Chế độ học tập": Flashcard Quiz, Vocabulary Review, Listening Practice, Kiểm tra, Wrong Words, Leaderboard để tạo thành grid 3x2 hoàn hảo trên Desktop.
+  - Tách card "Grammar Practice" (disabled) và bổ sung card "Daily Challenge" (disabled) sử dụng icon `Calendar` xuống một section riêng biệt mang tên "Sắp ra mắt" ở phía dưới.
+- **dashboard.css**:
+  - Thiết lập responsive grid cho cả `.features-grid` và `.upcoming-grid` theo nguyên lý mobile-first: 1 cột trên Mobile (<768px), 2 cột trên Tablet (>=768px), 3 cột trên Desktop (>=1024px).
+  - Đồng bộ hóa class base `.feature-card` để áp dụng chung padding, border-radius, background, border, shadow cho tất cả các card (bao gồm cả active và disabled).
+  - Sử dụng layout flexbox hướng cột (`display: flex; flex-direction: column; height: 100%; min-height: 300px;`) và thêm `margin-top: auto` vào `.feature-button` để tất cả nút bấm thẳng hàng tăm tắp dưới đáy card.
+  - Giới hạn description text của `.feature-desc` tối đa 3 dòng bằng line-clamp để đảm bảo chiều cao card đồng bộ.
+  - Vô hiệu hóa hiệu ứng hover (`transform`, `border-color`, `box-shadow`) cho các card thuộc lớp `.disabled-card` và gán `cursor: not-allowed` cho nút bấm bị tắt để tránh nhầm lẫn cho người dùng.
+
+### File đã sửa
+- [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx)
+- [src/styles/dashboard.css](file:///d:/VIBE/english-flashcard-web/src/styles/dashboard.css)
+
+### Ghi chú
+- Đã chạy lệnh build production `npm run build` thành công, kiểm tra không lỗi.
+- Đã chạy subagent kiểm thử tự động xác nhận grid layout hiển thị cân đối trên cả Desktop, Tablet, và Mobile, đồng thời kiểm tra dòng điều hướng và hoạt động bình thường của nút "Trang chủ" trên các trang con.
+
+## 2026-07-06 - Thêm chức năng “Kiểm tra từ vựng” (Vocabulary Test)
+
+### Đã làm
+- **VocabularyTest.jsx**:
+  - Tạo mới component `VocabularyTest.jsx` quản lý 3 trạng thái: chọn bài kiểm tra, màn làm bài kiểm tra và màn kết quả thi.
+  - Hỗ trợ 4 bài kiểm tra cố định: Nền tảng Giữa kỳ (Buổi 1-9), Nền tảng Cuối kỳ (Buổi 1-18), TOEIC 1 Giữa kỳ (Buổi 1-9), TOEIC 1 Cuối kỳ (Buổi 1-18).
+  - Triển khai giao diện gameplay dạng danh sách 2 cột trên Desktop (STT, Từ tiếng Anh, Input điền nghĩa tiếng Việt) và dạng thẻ card-stack trên Mobile chống tràn ngang.
+  - Hỗ trợ phím Enter để tự động chuyển focus xuống ô tiếp theo mượt mà.
+  - Xây dựng thanh trạng thái sticky bottom hiển thị tiến độ nhập và nút "Nộp bài", kèm cảnh báo xác nhận nộp bài khi còn câu bỏ trống.
+  - Thiết kế bảng điểm chi tiết kèm các bộ lọc câu đúng, câu sai, câu bỏ trống và tích hợp chức năng nghe phát âm.
+- **vocabularyTestService.js**:
+  - Tạo mới service hỗ trợ lọc, sắp xếp từ vựng theo khóa học/buổi thi và định dạng normalize, kiểm tra đáp án tiếng Việt (chấp nhận khớp chính xác hoặc khớp một trong nhiều nghĩa phân tách bằng dấu `,`, `;`, `/`, `|`, xuống dòng).
+- **studyResultService.js**:
+  - Tích hợp thêm chế độ `'vocabulary_test'` và ánh xạ cấu trúc ghi nhận câu trả lời vào Supabase bảng `study_sessions` và `study_answers`.
+- **ProgressDashboard.jsx & progress.css**:
+  - Định dạng hiển thị nhãn "Kiểm tra từ vựng" và tạo style cho badge `.mode-vocabulary_test` sử dụng gam màu ngọc lục bảo (emerald) đồng bộ.
+- **Home.jsx**:
+  - Thêm thẻ chức năng "Kiểm tra" vào danh sách "Chế độ học tập" trang chủ mà không làm ảnh hưởng các chế độ cũ.
+- **App.jsx**:
+  - Đăng ký component `VocabularyTest` và điều phối chuyển trang (routing) mượt mà.
+- **vocabulary_test_migration.sql**:
+  - Tạo mới tệp SQL migration phục vụ việc sửa đổi CHECK constraint trên cột `mode` của bảng `study_sessions` và `study_answers` để chấp nhận giá trị `'vocabulary_test'`.
+
+## 2026-07-06 - Thêm chế độ học mới: “Nhập nghĩa tiếng Việt”
+
+### Đã làm
+- **FlashcardQuiz.jsx & WrongWords.jsx**:
+  - Tích hợp thêm kiểu kiểm tra mới "Nhập nghĩa tiếng Việt" (`vietnamese_typing`) vào màn hình chọn chế độ.
+  - Xây dựng giao diện gameplay hiển thị từ tiếng Anh lớn, phiên âm (IPA), loại từ, audio phát âm và câu ví dụ tiếng Anh, che giấu nghĩa tiếng Việt trước khi trả lời.
+  - Phát triển helper `checkVietnameseAnswer` thực hiện normalize đáp án (trim khoảng trắng, chuyển chữ thường, loại bỏ dấu câu thừa ở đầu/cuối, chấp nhận các phần nghĩa phân tách bởi dấu `,`, `;`, `/`, `|` hoặc newline).
+  - Tự động chuyển sang câu tiếp theo sau `1000ms` khi gõ đúng trong chế độ mới. Nếu sai, giữ nguyên màn hình hiển thị đáp án đúng để người dùng nhấn "Tiếp tục" hoặc nhấn Enter.
+  - Chống double submit và khóa nhập liệu / nút bấm trong quá trình tự động chuyển câu thông qua state `isAutoNexting`.
+  - Cập nhật bảng kết quả (Finished Screen) hiển thị review so sánh chi tiết giữa từ tiếng Anh, nghĩa tiếng Việt đúng và nội dung người học đã gõ cho cả hai chế độ nhập liệu trên cả Desktop và Mobile.
+- **studyResultService.js**:
+  - Hỗ trợ map và lưu trữ kết quả phiên học của chế độ `vietnamese_typing` lên Supabase (bảng `study_sessions` và `study_answers`), ghi nhận đúng prompt, user_answer, correct_answer và update word_progress / Wrong Words.
+- **ProgressDashboard.jsx**:
+  - Định dạng hiển thị mode `vietnamese_typing` thành "Nhập nghĩa tiếng Việt" trong lịch sử phiên học gần đây.
+- **progress.css**:
+  - Thêm styling cho badge hiển thị chế độ `.mode-vietnamese_typing` sử dụng gam màu vàng/cảnh báo đồng bộ.
+- **flashcard.css**:
+  - Nâng cấp `.quiz-mode-options` thành hiển thị 3 cột trên Desktop để dàn hàng đều 3 kiểu kiểm tra.
+- **add_vietnamese_typing_mode.sql**:
+  - Tạo file SQL migration phục vụ việc sửa đổi CHECK constraint trên cột `mode` của bảng `study_sessions` và `study_answers` để chấp nhận giá trị `'vietnamese_typing'`.
+
+### File đã sửa
+- [src/components/FlashcardQuiz.jsx](file:///d:/VIBE/english-flashcard-web/src/components/FlashcardQuiz.jsx)
+- [src/components/WrongWords.jsx](file:///d:/VIBE/english-flashcard-web/src/components/WrongWords.jsx)
+- [src/components/ProgressDashboard.jsx](file:///d:/VIBE/english-flashcard-web/src/components/ProgressDashboard.jsx)
+- [src/utils/studyResultService.js](file:///d:/VIBE/english-flashcard-web/src/utils/studyResultService.js)
+- [src/styles/progress.css](file:///d:/VIBE/english-flashcard-web/src/styles/progress.css)
+- [src/styles/flashcard.css](file:///d:/VIBE/english-flashcard-web/src/styles/flashcard.css)
+- [supabase/add_vietnamese_typing_mode.sql](file:///d:/VIBE/english-flashcard-web/supabase/add_vietnamese_typing_mode.sql) [NEW]
+- [README.md](file:///d:/VIBE/english-flashcard-web/README.md)
+- [UPDATE_LOG.md](file:///d:/VIBE/english-flashcard-web/UPDATE_LOG.md)
+
+### Ghi chú
+- Đảm bảo logic check xanh hoàn thành buổi học hoạt động ổn định và lưu đầy đủ Wrong Words.
+- Đã chạy lệnh `npm run build` thành công, kiểm tra không lỗi.
+
+## 2026-07-03 - Nâng cấp Visual Polish giao diện (PHASE 4)
+
+### Đã làm
+- **global.css**: Bổ sung token màu Emerald (`--color-emerald`, `--color-emerald-hover`, `--color-emerald-bg`, `--color-emerald-border`, `--color-emerald-light`) nhất quán cho các trạng thái completed/streak. Di chuyển global keyframes (`fadeIn`, `scaleUp`, `slideUp`, `slideDown`) vào đây để tránh khai báo lặp.
+- **dashboard.css**:
+  - Hero title lớn hơn: `clamp(40px, 5.5vw, 60px)`, letter-spacing chặt hơn `−0.025em` để tạo cảm giác impact mạnh.
+  - Stat card shell: Background rõ ràng hơn (`rgba(248,250,255,0.8)`) và hover shadow rõ nét (`0 16px 40px -12px rgba(49,87,213,0.16)`).
+  - Stat number lớn hơn: `clamp(24px, 3.2vw, 32px)` + stat-label nhỏ gọn hơn với `letter-spacing: 0.02em`.
+  - Feature card: Xóa `min-height: 54px` cứng trên `.feature-desc` để nội dung tự co giãn.
+  - Disabled card: Tăng contrast `opacity: 0.55`, border dày hơn `1.5px dashed`.
+  - Path card: Bán kính bo góc nhỏ hơn `20px` cho cảm giác solid hơn.
+- **flashcard.css**:
+  - Example text: Giảm `19px → 17px`, thêm background nhạt + border-left → tạo block quote visual.
+  - Result box: Padding tăng `18→20px`, shadow mang màu ngữ nghĩa (xanh lá cho correct, đỏ cho wrong).
+  - Score number lớn hơn `54px → 60px` + letter-spacing chặt hơn để nổi bật kết quả.
+  - Lesson card completed: Circle lớn hơn `44→48px`, border `1.5px`, shadow xanh lá nhẹ. Background card nhạt emerald `rgba(236,253,245,0.4)` thay vì trắng.
+- **leaderboard.css**:
+  - Podium rank-1: Gradient nền kem nhạt `#fffdf5 → #fffbeb`, border amber rõ hơn, shadow lớn hơn.
+  - Podium rank-2/3: Gradient nền tương ứng, border rõ hơn.
+  - Glow opacity tăng `0.15→0.22` cho hiệu ứng ánh sáng thực tế hơn.
+  - Error/Empty states: Thêm icon wrapper có border thay vì emoji to, màu ngữ nghĩa đúng (đỏ cho error, xám cho empty).
+- **progress.css**: Icon wrapper tăng `40→44px`, border-radius `12→14px`. Stat label chữ nhỏ hơn `12→11px` với letter-spacing rõ hơn.
+- **auth.css**: Input focus ring nhỏ gọn hơn `4px→3px` + background nhạt. Submit button thêm `active:scale(0.98)` tactile. Login button thêm shadow khi hover.
+- **layout.css**: `min-height: 100vh → 100dvh` (hỗ trợ mobile notch), thêm media query mobile padding `16px 12px`.
+- **Build**: `npm run build` pass, bundle CSS 102.32 kB.
+
+### File đã sửa
+- [src/styles/global.css](file:///d:/VIBE/english-flashcard-web/src/styles/global.css)
+- [src/styles/dashboard.css](file:///d:/VIBE/english-flashcard-web/src/styles/dashboard.css)
+- [src/styles/flashcard.css](file:///d:/VIBE/english-flashcard-web/src/styles/flashcard.css)
+- [src/styles/leaderboard.css](file:///d:/VIBE/english-flashcard-web/src/styles/leaderboard.css)
+- [src/styles/progress.css](file:///d:/VIBE/english-flashcard-web/src/styles/progress.css)
+- [src/styles/auth.css](file:///d:/VIBE/english-flashcard-web/src/styles/auth.css)
+- [src/styles/layout.css](file:///d:/VIBE/english-flashcard-web/src/styles/layout.css)
+- [UPDATE_LOG.md](file:///d:/VIBE/english-flashcard-web/UPDATE_LOG.md)
+
+### Ghi chú
+- Không đổi bất kỳ logic React, Supabase query, hay JSX nào. Tất cả thay đổi thuần CSS.
+- Xây dựng trên nền tảng Phase 3, không có breaking change.
+
+## 2026-07-03 - Thực hiện Audit UI/UX và nâng cấp giao diện cao cấp (PHASE 3)
+
+### Đã làm
+- **Đánh giá & Khảo sát giao diện**: Đóng góp báo cáo đánh giá chi tiết UI/UX cho toàn bộ 9 màn hình chức năng.
+- **Nâng cấp Dashboard & Lộ trình (Đợt 1)**:
+  - Cấu trúc lại 4 stats cards và Thẻ khuyến nghị học tập thành dạng Double-Bezel lồng shell.
+  - Bổ sung hiệu ứng Skeleton Loader `.rec-skeleton` nhịp nhàng thay thế loading text thô sơ.
+  - Thiết kế lại Auth Header mobile thành floating glass pill detached lướt từ trên xuống và menu hamburger staggered fade-in mượt mà.
+- **Nâng cấp Gameplay & Luyện nghe (Đợt 2)**:
+  - Tách biệt ví dụ từ vựng bằng border trái Indigo mờ và chữ in nghiêng.
+  - Áp dụng cấu trúc Double-Bezel khay lồng CSS-only cho `.quiz-stat-card` thông qua pseudo-element `::after` mà không cần đổi JSX.
+  - Bổ sung hiệu ứng sóng âm pulsing wave rings `.listening-speaker-large` khi di chuột và di chuyển chậm lúc nghỉ cho bài nghe.
+- **Nâng cấp Podium & Accuracy Ring (Đợt 3)**:
+  - Tạo chữ số thứ hạng mờ khổng lồ (`1`, `2`, `3`) phía sau các thẻ top 3 Podium của Leaderboard.
+  - Bổ sung hiệu ứng tự động vẽ cung tròn Accuracy Ring (`stroke-dashoffset`) khi trang Tiến trình tải xong.
+  - Chuẩn hóa bo góc bảng quản lý từ vựng (`table-responsive`) thành `var(--radius-lg)` và đổ bóng mượt.
+- **Đóng gói production**: Chạy lệnh build thành công, toàn bộ bundle CSS hoạt động trơn tru với dung lượng đóng gói 100.89 kB.
+
+### File đã sửa
+- [src/components/Home.jsx](file:///d:/VIBE/english-flashcard-web/src/components/Home.jsx)
+- [src/components/AuthPanel.jsx](file:///d:/VIBE/english-flashcard-web/src/components/AuthPanel.jsx)
+- [src/styles/dashboard.css](file:///d:/VIBE/english-flashcard-web/src/styles/dashboard.css)
+- [src/styles/auth.css](file:///d:/VIBE/english-flashcard-web/src/styles/auth.css)
+- [src/styles/flashcard.css](file:///d:/VIBE/english-flashcard-web/src/styles/flashcard.css)
+- [src/styles/leaderboard.css](file:///d:/VIBE/english-flashcard-web/src/styles/leaderboard.css)
+- [src/styles/progress.css](file:///d:/VIBE/english-flashcard-web/src/styles/progress.css)
+- [src/styles/admin.css](file:///d:/VIBE/english-flashcard-web/src/styles/admin.css)
+- [UPDATE_LOG.md](file:///d:/VIBE/english-flashcard-web/UPDATE_LOG.md)
+
+### Ghi chú
+- Giữ nguyên vẹn toàn bộ logic xử lý React state và tích hợp cơ sở dữ liệu Supabase, chỉ nâng cấp visual.
+
 ## 2026-07-03 - Dọn dẹp CSS và Giải quyết Xung đột Selector (PHASE 2)
 
 ### Đã làm

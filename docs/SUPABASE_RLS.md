@@ -131,3 +131,12 @@ Thay vì cho phép user thường select trực tiếp từ bảng `profiles` (l
   ```
   *Mặc định: Chỉ người dùng đã đăng nhập (`authenticated`) mới được gọi RPC để xem bảng xếp hạng. Người dùng vãng lai (`anon`) sẽ bị chặn từ database.*
 
+
+## 7. Bổ sung Chế độ Kiểm tra từ vựng (Vocabulary Test Mode)
+
+Để hệ thống lưu trữ thành công các kết quả thi của chế độ "Kiểm tra từ vựng" (`vocabulary_test`), cơ sở dữ liệu Supabase được cập nhật thông qua tệp migration [supabase/vocabulary_test_migration.sql](../supabase/vocabulary_test_migration.sql):
+
+- **Loại hình (Type)**: Giá trị `'vocabulary_test'` được thêm vào kiểu liệt kê `study_mode` (nếu có).
+- **Ràng buộc kiểm tra (CHECK Constraints)**: Cập nhật lại ràng buộc kiểm tra trên cả hai bảng `study_sessions` và `study_answers` để chấp nhận giá trị `'vocabulary_test'`.
+
+
